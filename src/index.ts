@@ -142,6 +142,21 @@ export { InteractionContext } from "./core/interactions/InteractionContext.js";
 export type { InteractionContextOptions } from "./core/interactions/InteractionContext.js";
 export { verifyAndParseInteraction } from "./core/interactions/InteractionVerifier.js";
 export { InteractionRouter } from "./router/InteractionRouter.js";
+export type {
+	ChatInputHandler,
+	UserMenuHandler,
+	MessageMenuHandler,
+	EntryPointHandler,
+	ComponentHandler,
+	ModalHandler,
+	AutocompleteHandler,
+	RouterMiddleware,
+	RouterErrorHandler,
+	RouterFallback,
+	InteractionRouterOptions,
+} from "./router/InteractionRouter.js";
+export { AutocompleteContext } from "./router/AutocompleteContext.js";
+export type { FocusedOption } from "./router/AutocompleteContext.js";
 export {
 	MiniInteraction,
 	LegacyMiniInteractionAdapter,

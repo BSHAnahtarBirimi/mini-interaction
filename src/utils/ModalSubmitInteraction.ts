@@ -59,6 +59,22 @@ export type ModalSubmitInteraction = APIModalSubmitInteraction & {
 	getChannels: (customId: string) => APIInteractionDataResolvedChannel[];
 	getChannel: (customId: string) => APIInteractionDataResolvedChannel | undefined;
 	/**
+	 * Helper method to get the selected value of a RadioGroup component (type 21).
+	 */
+	getRadioGroupValue: (customId: string) => string | undefined;
+	/**
+	 * Helper method to get selected values of a CheckboxGroup component (type 22).
+	 */
+	getCheckboxGroupValues: (customId: string) => string[];
+	/**
+	 * Helper method to get the boolean state of a single Checkbox component (type 23).
+	 */
+	getCheckboxValue: (customId: string) => boolean | undefined;
+	/**
+	 * Helper method to get uploaded attachment ids of a FileUpload component (type 19).
+	 */
+	getFileUploadValues: (customId: string) => string[];
+	/**
 	 * Helper method to get an attachment value (e.g. from FileUpload component).
 	 */
 	getAttachment: (customId: string) => APIAttachment | undefined;
@@ -254,6 +270,64 @@ export function createModalSubmitInteraction(
 		return getSelectMenuValues(customId);
 	};
 
+	/** Recursively locates a submitted component by its custom id, walking
+	 * Action Row children and Label wrappers alike. */
+	const findSubmittedComponent = (
+		components: any[],
+		id: string,
+	): any | undefined => {
+		for (const component of components) {
+			if (component?.custom_id === id) return component;
+
+			if (Array.isArray(component?.components)) {
+				const found = findSubmittedComponent(component.components, id);
+				if (found) return found;
+			}
+
+			if (component?.component) {
+				const found = findSubmittedComponent([component.component], id);
+				if (found) return found;
+			}
+		}
+		return undefined;
+	};
+
+	const findTopLevelById = (id: string): any | undefined => {
+		for (const top of interaction.data.components) {
+			if ((top as any).custom_id === id) return top;
+
+			if ("components" in top && Array.isArray(top.components)) {
+				const found = findSubmittedComponent(top.components, id);
+				if (found) return found;
+			}
+			if ("component" in top && top.component) {
+				const found = findSubmittedComponent([top.component], id);
+				if (found) return found;
+			}
+		}
+		return undefined;
+	};
+
+	const getRadioGroupValue = (customId: string): string | undefined => {
+		const component = findTopLevelById(customId);
+		return typeof component?.value === "string" ? component.value : undefined;
+	};
+
+	const getCheckboxGroupValues = (customId: string): string[] => {
+		const component = findTopLevelById(customId);
+		return Array.isArray(component?.values) ? component.values : [];
+	};
+
+	const getCheckboxValue = (customId: string): boolean | undefined => {
+		const component = findTopLevelById(customId);
+		return typeof component?.value === "boolean" ? component.value : undefined;
+	};
+
+	const getFileUploadValues = (customId: string): string[] => {
+		const component = findTopLevelById(customId);
+		return Array.isArray(component?.values) ? component.values : [];
+	};
+
 	const getRoles = (customId: string): APIRole[] => {
 		const values = getSelectMenuValues(customId);
 		const resolved = interaction.data.resolved;
@@ -320,6 +394,10 @@ export function createModalSubmitInteraction(
 		getTextFieldValue,
 		getSelectMenuValues,
 		getComponentValue,
+		getRadioGroupValue,
+		getCheckboxGroupValues,
+		getCheckboxValue,
+		getFileUploadValues,
 		getRoles,
 		getRole,
 		getUsers,

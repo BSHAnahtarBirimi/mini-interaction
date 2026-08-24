@@ -49,15 +49,23 @@ export class InteractionContext {
     this.responded = true;
     this.clearAutoAck();
     return { type: 9, data };
-  }
+  }	editReply(body: BaseDiscordMessageOptions): Promise<DiscordSentMessage> {
+		return this.options.rest.editOriginalMessage(this.options.interaction.token, body);
+	}
 
-  editReply(body: BaseDiscordMessageOptions): Promise<DiscordSentMessage> {
-    return this.options.rest.editOriginalMessage(this.options.interaction.token, body);
-  }
+	followUp(body: BaseDiscordMessageOptions): Promise<DiscordSentMessage> {
+		return this.options.rest.createFollowupMessage(this.options.interaction.token, body);
+	}
 
-  followUp(body: BaseDiscordMessageOptions): Promise<DiscordSentMessage> {
-    return this.options.rest.createFollowupMessage(this.options.interaction.token, body);
-  }
+	/** Deletes the original interaction response. */
+	deleteOriginal(): Promise<void> {
+		return this.options.rest.deleteOriginal(this.options.interaction.token);
+	}
+
+	/** Deletes a follow-up message sent for this interaction. */
+	deleteFollowup(messageId: string): Promise<void> {
+		return this.options.rest.deleteFollowup(this.options.interaction.token, messageId);
+	}
 
   send(body: DiscordSendMessageOptions): Promise<DiscordSentMessage> {
     return this.options.rest.sendMessage(body);
