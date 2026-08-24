@@ -2,6 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import type {
   APIChannel,
   APIMessage,
+  APIUser,
   RESTPutAPIApplicationRoleConnectionMetadataJSONBody,
   RESTPutAPIApplicationRoleConnectionMetadataResult,
 } from 'discord-api-types/v10';
@@ -17,6 +18,8 @@ import {
   type DiscordWebhookSendOptions,
 } from '../messages/message-payloads.js';
 import { DiscordWebhook } from '../webhooks/DiscordWebhook.js';
+
+import type { DiscordChannelEditOptions } from '../messages/message-payloads.js';
 
 type FetchLike = typeof fetch;
 
@@ -272,6 +275,177 @@ export class DiscordRestClient {
     options: DiscordWebhookSendOptions,
   ): Promise<DiscordSentMessage> {
     return this.webhook(webhookId, webhookToken).send(options);
+  }
+
+  // ---- Message reads & bulk operations (v0.7) ----
+
+  async fetchMessage(channelId: string, messageId: string): Promise<DiscordSentMessage> {
+    const message = await this.request<APIMessage>(`/channels/${channelId}/messages/${messageId}`);
+    return new DiscordSentMessage(this, message);
+  }
+
+  /** Lists channel messages; at most one of before/after/around per call. */
+  async fetchMessages(
+    channelId: string,
+    options: { limit?: number; before?: string; after?: string; around?: string } = {},
+  ): Promise<APIMessage[]> {
+    const { limit, before, after, around } = options;
+    const params = new URLSearchParams();
+    if (limit !== undefined) params.set('limit', String(limit));
+    if (before) params.set('before', before);
+    if (after) params.set('after', after);
+    if (around) params.set('around', around);
+
+    const query = params.size > 0 ? `?${params.toString()}` : '';
+    return this.request<APIMessage[]>(`/channels/${channelId}/messages${query}`);
+  }
+
+  /** Bulk-deletes 2–100 messages (all must be younger than 14 days). */
+  async bulkDeleteMessages(channelId: string, messageIds: readonly string[], reason?: string): Promise<void> {
+    if (messageIds.length < 2 || messageIds.length > 100) {
+      throw new Error('[DiscordRestClient] bulk delete accepts between 2 and 100 messages');
+    }
+
+    await this.request(`/channels/${channelId}/messages/bulk-delete`, {
+      method: 'POST',
+      body: JSON.stringify({ messages: [...messageIds] }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  // ---- Typing & reactions (v0.7) ----
+
+  async triggerTyping(channelId: string): Promise<void> {
+    await this.request(`/channels/${channelId}/typing`, { method: 'POST' });
+  }
+
+  /** Lists the users who reacted with the given emoji (paginated). */
+  async fetchReactors(
+    channelId: string,
+    messageId: string,
+    reaction: DiscordReaction,
+    options: { limit?: number; after?: string; type?: number } = {},
+  ): Promise<APIUser[]> {
+    const { limit, after, type } = options;
+    const params = new URLSearchParams();
+    if (limit !== undefined) params.set('limit', String(limit));
+    if (after) params.set('after', after);
+    if (type !== undefined) params.set('type', String(type));
+
+    const query = params.size > 0 ? `?${params.toString()}` : '';
+    return this.request<APIUser>(
+      `/channels/${channelId}/messages/${messageId}/reactions/${encodeDiscordReaction(reaction)}${query}`,
+    ).then((result) => result as unknown as APIUser[]);
+  }
+
+  async removeOwnReaction(channelId: string, messageId: string, reaction: DiscordReaction): Promise<void> {
+    await this.request(
+      `/channels/${channelId}/messages/${messageId}/reactions/${encodeDiscordReaction(reaction)}/@me`,
+      { method: 'DELETE' },
+    );
+  }
+
+  async removeUserReaction(
+    channelId: string,
+    messageId: string,
+    userId: string,
+    reaction: DiscordReaction,
+    reason?: string,
+  ): Promise<void> {
+    await this.request(
+      `/channels/${channelId}/messages/${messageId}/reactions/${encodeDiscordReaction(reaction)}/${userId}`,
+      { method: 'DELETE', headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined },
+    );
+  }
+
+  async removeAllReactions(channelId: string, messageId: string, reason?: string): Promise<void> {
+    await this.request(`/channels/${channelId}/messages/${messageId}/reactions`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async removeAllReactionsForEmoji(
+    channelId: string,
+    messageId: string,
+    reaction: DiscordReaction,
+    reason?: string,
+  ): Promise<void> {
+    await this.request(`/channels/${channelId}/messages/${messageId}/reactions/${encodeDiscordReaction(reaction)}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  // ---- Channels (v0.7) ----
+
+  async fetchChannel(channelId: string): Promise<APIChannel> {
+    return this.request<APIChannel>(`/channels/${channelId}`);
+  }
+
+  /** Edits channel fields; thread-only options are sent only when provided. */
+  async editChannel(
+    channelId: string,
+    options: DiscordChannelEditOptions,
+    reason?: string,
+  ): Promise<APIChannel> {
+    return this.request<APIChannel>(`/channels/${channelId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(options.name !== undefined ? { name: options.name } : {}),
+        ...(options.topic !== undefined ? { topic: options.topic } : {}),
+        ...(options.nsfw !== undefined ? { nsfw: options.nsfw } : {}),
+        ...(options.rateLimitPerUser !== undefined
+          ? { rate_limit_per_user: options.rateLimitPerUser }
+          : {}),
+        ...(options.archived !== undefined ? { archived: options.archived } : {}),
+        ...(options.locked !== undefined ? { locked: options.locked } : {}),
+        ...(options.autoArchiveDuration !== undefined
+          ? { auto_archive_duration: options.autoArchiveDuration }
+          : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async deleteChannel(channelId: string, reason?: string): Promise<void> {
+    await this.request(`/channels/${channelId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /** Follows an announcement channel into the target channel. */
+  async followAnnouncementChannel(
+    sourceChannelId: string,
+    targetChannelId: string,
+    reason?: string,
+  ): Promise<void> {
+    await this.request(`/channels/${sourceChannelId}/followers`, {
+      method: 'POST',
+      body: JSON.stringify({ webhook_channel_id: targetChannelId }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  // ---- Polls (v0.7) ----
+
+  /** Immediately ends a poll the app authored. */
+  async endPoll(channelId: string, messageId: string): Promise<APIMessage> {
+    return this.request<APIMessage>(`/channels/${channelId}/polls/${messageId}/expire`, {
+      method: 'POST',
+    });
+  }
+
+  /** Lists users who voted for a poll answer (up to 100 per call). */
+  async fetchPollAnswerVoters(
+    channelId: string,
+    messageId: string,
+    answerId: number,
+  ): Promise<APIUser[]> {
+    return this.request<APIUser[]>(
+      `/channels/${channelId}/polls/${messageId}/answers/${answerId}/voters`,
+    );
   }
 
   addReaction(

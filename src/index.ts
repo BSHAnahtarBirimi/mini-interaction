@@ -113,7 +113,22 @@ export type {
 	DiscordStartThreadOptions,
 	DiscordWebhookSendOptions,
 	DiscordCreateThreadOptions,
+	DiscordChannelEditOptions,
+	DiscordPollSpec,
+	DiscordPollAnswer,
 } from "./core/messages/message-payloads.js";
+export {
+	avatarURL,
+	defaultAvatarURL,
+	userBannerURL,
+	guildIconURL,
+	guildBannerURL,
+	guildSplashURL,
+	emojiURL,
+	stickerURL,
+	attachmentURL,
+} from "./utils/cdn.js";
+export type { ImageSize, ImageFormat, ImageOptions } from "./utils/cdn.js";
 export {
 	bold,
 	italic,

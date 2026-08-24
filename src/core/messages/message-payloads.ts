@@ -22,12 +22,29 @@ export type DiscordMessageReference = {
 	failIfNotExists?: boolean;
 };
 
+/** A single answer of a poll. */
+export type DiscordPollAnswer = {
+	text: string;
+	emoji?: { id?: string; name?: string; animated?: boolean };
+};
+
+/** Poll attached to a message send payload. */
+export type DiscordPollSpec = {
+	question: { text: string };
+	answers: DiscordPollAnswer[];
+	/** How long the poll stays open, in hours (1–768, default 24). */
+	durationHours?: number;
+	allowMultiselect?: boolean;
+};
+
 export type BaseDiscordMessageOptions = Omit<InteractionMessageData, "flags"> & {
 	flags?: MessageFlagLike | MessageFlagLike[];
 	allowedMentions?: APIAllowedMentions;
 	attachments?: Array<Record<string, unknown>>;
 	stickerIds?: string[];
 	files?: DiscordMessageFile[];
+	/** Attaches a poll to this message. */
+	poll?: DiscordPollSpec;
 	/** Sends this message as a reply when provided. */
 	messageReference?: DiscordMessageReference;
 };
@@ -49,6 +66,20 @@ export type DiscordWebhookSendOptions = BaseDiscordMessageOptions & {
 	threadId?: string;
 	username?: string;
 	avatarUrl?: string;
+};
+
+/** Partial edit payload for channels (thread fields only apply to threads). */
+export type DiscordChannelEditOptions = {
+	name?: string;
+	topic?: string;
+	nsfw?: boolean;
+	rateLimitPerUser?: number;
+	/** Thread only: whether the thread is archived. */
+	archived?: boolean;
+	/** Thread only: whether the thread is locked. */
+	locked?: boolean;
+	/** Thread only: auto-archive duration in minutes. */
+	autoArchiveDuration?: number;
 };
 
 /** Options for creating a thread directly in a channel (no source message). */
@@ -101,6 +132,23 @@ export function normaliseDiscordMessagePayload(
 			message_id: messageId,
 			...(channelId ? { channel_id: channelId } : {}),
 			...(failIfNotExists !== undefined ? { fail_if_not_exists: failIfNotExists } : {}),
+		};
+	}
+
+	if (options.poll) {
+		const { question, answers, durationHours, allowMultiselect } = options.poll;
+		resolvedPayload.poll = {
+			question,
+			answers: answers.map((answer) => ({
+				poll_media: {
+					text: answer.text,
+					...(answer.emoji ? { emoji: answer.emoji } : {}),
+				},
+			})),
+			...(durationHours !== undefined ? { duration: durationHours } : {}),
+			...(allowMultiselect !== undefined
+				? { allow_multiselect: allowMultiselect }
+				: {}),
 		};
 	}
 
