@@ -2,6 +2,14 @@
 
 ## Unreleased
 ### Added
+- Guild basics: `fetchGuild` (with counts), `listGuildChannels`.
+- Members & moderation: `fetchMember`, `listMembers`, `kickMember`, `banMember`/`unbanMember`, `listBans`, `editMember`, `timeoutMember`.
+- Roles: `listRoles`, `createRole`, `editRole`, `deleteRole`, `reorderRoles`, `addRoleToMember`, `removeRoleFromMember`.
+- Emoji & stickers: `listGuildEmojis`, `fetchGuildEmoji`, `createGuildEmoji`, `editGuildEmoji`, `deleteGuildEmoji`, `listGuildStickers`, `fetchSticker`, `deleteGuildSticker`.
+- Webhooks management: `listChannelWebhooks`, `listGuildWebhooks`, `createWebhook`, `fetchWebhook`, `fetchWebhookWithToken`, `editWebhook`, `deleteWebhook`.
+- Monetization: `listSKUs`, `listEntitlements`, `consumeEntitlement`.
+- Command permissions: `getCommandPermissions`, `setCommandPermissions`.
+### Added
 - Message reads & bulk operations: `fetchMessage`, `fetchMessages` (before/after/around pagination), `bulkDeleteMessages` (2–100).
 - Typing & reaction management: `triggerTyping`, `fetchReactors`, `removeOwnReaction`, `removeUserReaction`, `removeAllReactions`, `removeAllReactionsForEmoji`.
 - Channel endpoints: `fetchChannel`, `editChannel` (incl. thread archive/lock), `deleteChannel`, `followAnnouncementChannel`.
