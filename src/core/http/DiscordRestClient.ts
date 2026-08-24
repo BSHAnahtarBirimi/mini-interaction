@@ -63,6 +63,14 @@ export class DiscordRestClient {
   private readonly baseUrl: string;
   private readonly maxRetries: number;
 
+  /** Bucket id -> observed remaining/reset state. */
+  private readonly buckets = new Map<
+    string,
+    { remaining: number | null; resetAt: number }
+  >();
+  /** Normalised route -> bucket id, learned from X-RateLimit headers. */
+  private readonly routeBuckets = new Map<string, string>();
+
   constructor(private readonly options: DiscordRestClientOptions) {
     this.fetchImpl = options.fetchImplementation ?? fetch;
     this.baseUrl = options.apiBaseUrl ?? 'https://discord.com/api/v10';
@@ -75,7 +83,12 @@ export class DiscordRestClient {
   ): Promise<T> {
     let lastError: unknown;
     const { authenticated = true, ...requestInit } = init;
+    const routeKey = this.routeKey(path, requestInit);
+
     for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
+      // Respect the last observed per-bucket budget before spending a call.
+      await this.waitForBucket(routeKey);
+
       let response: Response;
       try {
         response = await this.fetchImpl(`${this.baseUrl}${path}`, {
@@ -95,10 +108,13 @@ export class DiscordRestClient {
         break;
       }
 
+      // Learn/refresh the bucket budget from every response.
+      this.updateRateLimitState(routeKey, response);
+
       if (response.status === 429) {
+        const retryAfterSeconds = await this.readRetryAfter(response);
         if (attempt < this.maxRetries) {
-          const retryAfter = Number(response.headers.get('retry-after') ?? '1');
-          await sleep(Math.ceil(retryAfter * 1000));
+          await sleep(Math.ceil(retryAfterSeconds * 1000));
           continue;
         }
 
@@ -127,6 +143,73 @@ export class DiscordRestClient {
       break;
     }
     throw lastError instanceof Error ? lastError : new Error('[DiscordRestClient] unknown request failure');
+  }
+
+  /**
+   * Normalises a path into a stable route key: numeric ids become `:id`
+   * except for major parameters (channel/guild/webhook roots).
+   */
+  private routeKey(path: string, init: RequestInit): string {
+    const method = (init.method ?? 'GET').toUpperCase();
+    const parts = path.split('?')[0].split('/').filter(Boolean);
+
+    const masked = parts.map((part, index) => {
+      const previous = parts[index - 1];
+      if (previous === 'channels' || previous === 'guilds' || previous === 'webhooks') {
+        return part; // major parameter — kept verbatim
+      }
+      if (part === '@me' || part === '@original') return part;
+      return /^\d{15,}$/.test(part) ? ':id' : part;
+    });
+
+    return `${method} ${masked.join('/')}`;
+  }
+
+  private async waitForBucket(routeKey: string): Promise<void> {
+    const bucketId = this.routeBuckets.get(routeKey);
+    if (!bucketId) return;
+
+    const bucket = this.buckets.get(bucketId);
+    if (!bucket || bucket.remaining === null || bucket.remaining > 0) return;
+
+    const waitMs = bucket.resetAt - Date.now();
+    if (waitMs > 0) {
+      await sleep(waitMs + 5); // small buffer for clock skew
+    } else {
+      bucket.remaining = null; // stale entry — let it refresh
+    }
+  }
+
+  private updateRateLimitState(routeKey: string, response: Response): void {
+    const bucketId = response.headers.get('x-ratelimit-bucket');
+    if (!bucketId) return;
+
+    this.routeBuckets.set(routeKey, bucketId);
+
+    const bucket = this.buckets.get(bucketId) ?? { remaining: null, resetAt: 0 };
+    const remaining = response.headers.get('x-ratelimit-remaining');
+    const resetAfter = response.headers.get('x-ratelimit-reset-after');
+
+    if (remaining !== null) bucket.remaining = Number(remaining);
+    if (resetAfter !== null) bucket.resetAt = Date.now() + Number(resetAfter) * 1000;
+
+    this.buckets.set(bucketId, bucket);
+  }
+
+  /** Reads retry_after from the 429 body first (float seconds), then headers. */
+  private async readRetryAfter(response: Response): Promise<number> {
+    try {
+      const bodyText = await response.clone().text();
+      if (bodyText) {
+        const parsed = JSON.parse(bodyText) as { retry_after?: number };
+        if (typeof parsed.retry_after === 'number') return parsed.retry_after;
+      }
+    } catch {
+      // fall through to header parsing
+    }
+
+    const headerValue = response.headers.get('retry-after');
+    return headerValue !== null ? Number(headerValue) : 1;
   }
 
   private createRequestError(path: string, method: string | undefined, error: unknown): Error {
