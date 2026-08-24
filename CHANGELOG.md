@@ -2,6 +2,11 @@
 
 ## Unreleased
 ### Added
+- Bucket-aware rate limiting in `DiscordRestClient`: learns `X-RateLimit-*` budgets per route, waits for bucket resets before spending calls, and honours `retry_after` from 429 bodies.
+- Snowflake utilities: `snowflakeToTimestamp`, `snowflakeToDate`, `isValidSnowflake`, `DISCORD_EPOCH`.
+- Localisation helpers: `createLocalizationMap` (fully typed against Discord locales), `mergeLocalizationMaps`, and `resolveLocalization` with exact → base-language → default fallback.
+- CI workflow (typecheck + tests + build on Node 20/22) and an npm publish workflow triggered by version tags.
+### Added
 - Guild basics: `fetchGuild` (with counts), `listGuildChannels`.
 - Members & moderation: `fetchMember`, `listMembers`, `kickMember`, `banMember`/`unbanMember`, `listBans`, `editMember`, `timeoutMember`.
 - Roles: `listRoles`, `createRole`, `editRole`, `deleteRole`, `reorderRoles`, `addRoleToMember`, `removeRoleFromMember`.

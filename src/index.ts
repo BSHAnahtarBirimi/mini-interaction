@@ -134,6 +134,17 @@ export {
 } from "./utils/cdn.js";
 export type { ImageSize, ImageFormat, ImageOptions } from "./utils/cdn.js";
 export {
+	DISCORD_EPOCH,
+	isValidSnowflake,
+	snowflakeToTimestamp,
+	snowflakeToDate,
+} from "./utils/snowflake.js";
+export {
+	createLocalizationMap,
+	mergeLocalizationMaps,
+	resolveLocalization,
+} from "./utils/localization.js";
+export {
 	bold,
 	italic,
 	underline,
