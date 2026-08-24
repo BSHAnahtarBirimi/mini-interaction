@@ -125,6 +125,22 @@ export class DiscordRestClient {
     });
   }
 
+  /** Deletes the original interaction response. */
+  async deleteOriginal(interactionToken: string): Promise<void> {
+    await this.request(`/webhooks/${this.options.applicationId}/${interactionToken}/messages/@original`, {
+      method: 'DELETE',
+      authenticated: false,
+    });
+  }
+
+  /** Deletes a follow-up message previously sent for this interaction. */
+  async deleteFollowup(interactionToken: string, messageId: string): Promise<void> {
+    await this.request(
+      `/webhooks/${this.options.applicationId}/${interactionToken}/messages/${messageId}`,
+      { method: 'DELETE', authenticated: false },
+    );
+  }
+
   async createFollowupMessage(
     interactionToken: string,
     options: BaseDiscordMessageOptions,

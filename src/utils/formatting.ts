@@ -100,15 +100,23 @@ export type DiscordTimestampStyle = "t" | "T" | "d" | "D" | "f" | "F" | "R";
 /**
  * Renders a dynamic timestamp (<t:unix:style>).
  *
- * @param time - A Date, unix-seconds number, or ISO/parseable date string.
+ * @param time - A Date, an ISO/parseable date string, or a **unix-seconds** number
+ *   (matching Discord's own format — not milliseconds).
  * @param style - Optional display style; `"R"` shows relative time ("in 3 minutes").
  */
 export function timestamp(
 	time: Date | number | string,
 	style?: DiscordTimestampStyle,
 ): string {
-	const date = time instanceof Date ? time : new Date(time);
-	const seconds = Math.floor(date.getTime() / 1000);
+	let seconds: number;
+	if (time instanceof Date) {
+		seconds = Math.floor(time.getTime() / 1000);
+	} else if (typeof time === "number") {
+		seconds = Math.floor(time);
+	} else {
+		seconds = Math.floor(new Date(time).getTime() / 1000);
+	}
+
 	return style ? `<t:${seconds}:${style}>` : `<t:${seconds}>`;
 }
 
