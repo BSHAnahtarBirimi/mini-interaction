@@ -186,6 +186,45 @@ await mini.registerMetadata(process.env.DISCORD_BOT_TOKEN!, [
 
 ---
 
+## ✍️ Text Formatting
+
+Compose Discord markdown with pure helper functions:
+
+```ts
+import {
+  bold, italic, heading, codeBlock, spoiler, timestamp,
+  userMention, bulletList, maskLink,
+} from '@minesa-org/mini-interaction';
+
+const content = [
+  heading(`Welcome ${userMention(userId)}!`, 2),
+  italic(bold('Enjoy your stay.')),
+  bulletList([spoiler('secret tip'), maskLink('Docs', 'https://example.com')]),
+  `Event starts ${timestamp(eventDate, 'R')}`,
+].join('\n');
+```
+
+---
+
+## 🧵 Messaging Helpers
+
+```ts
+// Create a thread directly in a channel (e.g. forum posts)
+await rest.createThread({ channelId, name: 'Weekly discussion', type: ChannelType.PublicThread });
+
+// Send, then chain follow-up actions
+const msg = await rest.sendMessage({ channelId, content: 'Hello!' });
+await msg.react('🎉');
+await msg.reply('Hi back!');
+await msg.pin();
+await msg.edit({ content: 'Edited!' });
+
+// Webhook messages
+await rest.sendWebhookMessage(webhookId, webhookToken, { content: 'Via webhook' });
+```
+
+---
+
 ## 📜 License
 
 MIT © [Minesa](https://github.com/minesa-org)

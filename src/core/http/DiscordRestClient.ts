@@ -10,9 +10,11 @@ import { DiscordSentMessage } from '../messages/DiscordSentMessage.js';
 import {
   createMessageRequestInit,
   type BaseDiscordMessageOptions,
+  type DiscordCreateThreadOptions,
   type DiscordReaction,
   type DiscordSendMessageOptions,
   type DiscordStartThreadOptions,
+  type DiscordWebhookSendOptions,
 } from '../messages/message-payloads.js';
 import { DiscordWebhook } from '../webhooks/DiscordWebhook.js';
 
@@ -184,6 +186,76 @@ export class DiscordRestClient {
       }),
       headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
     });
+  }
+
+  /**
+   * Creates a thread directly in a channel (no source message), e.g. for
+   * forum channels or standalone public/private threads.
+   */
+  async createThread(options: DiscordCreateThreadOptions): Promise<APIChannel> {
+    const { channelId, reason, autoArchiveDuration, rateLimitPerUser, type, invitable, name } = options;
+
+    return this.request<APIChannel>(`/channels/${channelId}/threads`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        ...(autoArchiveDuration !== undefined ? { auto_archive_duration: autoArchiveDuration } : {}),
+        ...(rateLimitPerUser !== undefined ? { rate_limit_per_user: rateLimitPerUser } : {}),
+        ...(type !== undefined ? { type } : {}),
+        ...(invitable !== undefined ? { invitable } : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async editMessage(
+    channelId: string,
+    messageId: string,
+    options: BaseDiscordMessageOptions,
+  ): Promise<DiscordSentMessage> {
+    const requestInit = createMessageRequestInit(options);
+    const message = await this.request<APIMessage>(`/channels/${channelId}/messages/${messageId}`, {
+      method: 'PATCH',
+      ...requestInit,
+    });
+
+    return new DiscordSentMessage(this, message);
+  }
+
+  async deleteMessage(channelId: string, messageId: string, reason?: string): Promise<void> {
+    await this.request(`/channels/${channelId}/messages/${messageId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async pinMessage(channelId: string, messageId: string, reason?: string): Promise<void> {
+    await this.request(`/channels/${channelId}/pins/${messageId}`, {
+      method: 'PUT',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async unpinMessage(channelId: string, messageId: string, reason?: string): Promise<void> {
+    await this.request(`/channels/${channelId}/pins/${messageId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async crosspostMessage(channelId: string, messageId: string): Promise<APIMessage> {
+    return this.request<APIMessage>(`/channels/${channelId}/messages/${messageId}/crosspost`, {
+      method: 'POST',
+    });
+  }
+
+  /** Sends a message through an existing webhook without instantiating {@link DiscordWebhook}. */
+  async sendWebhookMessage(
+    webhookId: string,
+    webhookToken: string,
+    options: DiscordWebhookSendOptions,
+  ): Promise<DiscordSentMessage> {
+    return this.webhook(webhookId, webhookToken).send(options);
   }
 
   addReaction(

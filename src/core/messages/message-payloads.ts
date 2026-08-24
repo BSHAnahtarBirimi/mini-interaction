@@ -1,6 +1,6 @@
 import { MessageFlags } from "discord-api-types/v10";
 
-import type { APIAllowedMentions } from "discord-api-types/v10";
+import type { APIAllowedMentions, ChannelType } from "discord-api-types/v10";
 
 import { InteractionFlags } from "../../types/InteractionFlags.js";
 import {
@@ -15,12 +15,21 @@ export type DiscordMessageFile = {
 	contentType?: string;
 };
 
+/** Reference to an existing message used for replies. */
+export type DiscordMessageReference = {
+	messageId: string;
+	channelId?: string;
+	failIfNotExists?: boolean;
+};
+
 export type BaseDiscordMessageOptions = Omit<InteractionMessageData, "flags"> & {
 	flags?: MessageFlagLike | MessageFlagLike[];
 	allowedMentions?: APIAllowedMentions;
 	attachments?: Array<Record<string, unknown>>;
 	stickerIds?: string[];
 	files?: DiscordMessageFile[];
+	/** Sends this message as a reply when provided. */
+	messageReference?: DiscordMessageReference;
 };
 
 export type DiscordSendMessageOptions = BaseDiscordMessageOptions & {
@@ -40,6 +49,19 @@ export type DiscordWebhookSendOptions = BaseDiscordMessageOptions & {
 	threadId?: string;
 	username?: string;
 	avatarUrl?: string;
+};
+
+/** Options for creating a thread directly in a channel (no source message). */
+export type DiscordCreateThreadOptions = {
+	channelId: string;
+	name: string;
+	autoArchiveDuration?: number;
+	rateLimitPerUser?: number;
+	/** Thread type; e.g. `ChannelType.PrivateThread` (12). Defaults per channel context. */
+	type?: ChannelType;
+	/** Whether the thread is invitable by non-moderators; private threads only. */
+	invitable?: boolean;
+	reason?: string;
 };
 
 export type DiscordReaction =
@@ -71,6 +93,15 @@ export function normaliseDiscordMessagePayload(
 
 	if (options.allowedMentions) {
 		resolvedPayload.allowed_mentions = options.allowedMentions;
+	}
+
+	if (options.messageReference) {
+		const { messageId, channelId, failIfNotExists } = options.messageReference;
+		resolvedPayload.message_reference = {
+			message_id: messageId,
+			...(channelId ? { channel_id: channelId } : {}),
+			...(failIfNotExists !== undefined ? { fail_if_not_exists: failIfNotExists } : {}),
+		};
 	}
 
 	if (options.stickerIds && options.stickerIds.length > 0) {

@@ -107,11 +107,36 @@ export type { DiscordRestClientOptions } from "./core/http/DiscordRestClient.js"
 export { DiscordSentMessage } from "./core/messages/DiscordSentMessage.js";
 export type {
 	DiscordMessageFile,
+	DiscordMessageReference,
 	DiscordReaction,
 	DiscordSendMessageOptions,
 	DiscordStartThreadOptions,
 	DiscordWebhookSendOptions,
+	DiscordCreateThreadOptions,
 } from "./core/messages/message-payloads.js";
+export {
+	bold,
+	italic,
+	underline,
+	strikethrough,
+	inlineCode,
+	codeBlock,
+	blockQuote,
+	multilineBlockQuote,
+	spoiler,
+	subtext,
+	heading,
+	bulletList,
+	numberedList,
+	maskLink,
+	timestamp,
+	userMention,
+	roleMention,
+	channelMention,
+	slashCommandMention,
+	escapeMarkdown,
+} from "./utils/formatting.js";
+export type { DiscordTimestampStyle } from "./utils/formatting.js";
 export { DiscordWebhook } from "./core/webhooks/DiscordWebhook.js";
 export { InteractionContext } from "./core/interactions/InteractionContext.js";
 export type { InteractionContextOptions } from "./core/interactions/InteractionContext.js";
