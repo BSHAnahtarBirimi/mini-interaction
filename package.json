@@ -18,7 +18,7 @@
     "patch": "npm version patch",
     "publish:npm": "npm publish",
     "publish:gh": "npm publish --registry=https://npm.pkg.github.com",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "lint:type": "tsc --noEmit"
   },
   "publishConfig": {

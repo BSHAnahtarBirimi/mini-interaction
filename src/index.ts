@@ -103,7 +103,11 @@ export type {
 
 // New v10 core modules
 export { DiscordRestClient } from "./core/http/DiscordRestClient.js";
-export type { DiscordRestClientOptions } from "./core/http/DiscordRestClient.js";
+export type {
+	DiscordRestClientOptions,
+	DiscordMemberEditOptions,
+	DiscordRoleOptions,
+} from "./core/http/DiscordRestClient.js";
 export { DiscordSentMessage } from "./core/messages/DiscordSentMessage.js";
 export type {
 	DiscordMessageFile,

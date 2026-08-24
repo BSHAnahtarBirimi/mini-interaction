@@ -1,8 +1,19 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import type {
+  APIBan,
   APIChannel,
+  APIEmoji,
+  APIEntitlement,
+  APIGuild,
+  APIGuildMember,
   APIMessage,
+  APIRole,
+  APISKU,
+  APISticker,
   APIUser,
+  APIWebhook,
+  ApplicationCommandPermissionType,
+  RESTPutAPIApplicationCommandPermissionsJSONBody,
   RESTPutAPIApplicationRoleConnectionMetadataJSONBody,
   RESTPutAPIApplicationRoleConnectionMetadataResult,
 } from 'discord-api-types/v10';
@@ -20,6 +31,22 @@ import {
 import { DiscordWebhook } from '../webhooks/DiscordWebhook.js';
 
 import type { DiscordChannelEditOptions } from '../messages/message-payloads.js';
+
+export type DiscordMemberEditOptions = {
+	nick?: string | null;
+	roles?: string[];
+	/** Timeout until this ISO timestamp (max 28 days); null clears it. */
+	communicationDisabledUntil?: string | null;
+};
+
+export type DiscordRoleOptions = {
+	name?: string;
+	permissions?: string;
+	color?: number;
+	hoist?: boolean;
+	mentionable?: boolean;
+	unicodeEmoji?: string;
+};
 
 type FetchLike = typeof fetch;
 
@@ -445,6 +472,394 @@ export class DiscordRestClient {
   ): Promise<APIUser[]> {
     return this.request<APIUser[]>(
       `/channels/${channelId}/polls/${messageId}/answers/${answerId}/voters`,
+    );
+  }
+
+  // ---- Guild basics (v0.8) ----
+
+  async fetchGuild(guildId: string, withCounts = false): Promise<APIGuild> {
+    return this.request<APIGuild>(
+      `/guilds/${guildId}${withCounts ? '?with_counts=true' : ''}`,
+    );
+  }
+
+  async listGuildChannels(guildId: string): Promise<APIChannel[]> {
+    return this.request<APIChannel[]>(`/guilds/${guildId}/channels`);
+  }
+
+  // ---- Members & moderation (v0.8) ----
+
+  async fetchMember(guildId: string, userId: string): Promise<APIGuildMember> {
+    return this.request<APIGuildMember>(`/guilds/${guildId}/members/${userId}`);
+  }
+
+  async listMembers(
+    guildId: string,
+    options: { limit?: number; after?: string } = {},
+  ): Promise<APIGuildMember[]> {
+    const params = new URLSearchParams();
+    if (options.limit !== undefined) params.set('limit', String(options.limit));
+    if (options.after) params.set('after', options.after);
+    const query = params.size > 0 ? `?${params.toString()}` : '';
+
+    return this.request<APIGuildMember[]>(`/guilds/${guildId}/members${query}`);
+  }
+
+  async kickMember(guildId: string, userId: string, reason?: string): Promise<void> {
+    await this.request(`/guilds/${guildId}/members/${userId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /** Bans a member; `deleteMessageSeconds` removes up to 7 days of messages. */
+  async banMember(
+    guildId: string,
+    userId: string,
+    options: { deleteMessageSeconds?: number; reason?: string } = {},
+  ): Promise<void> {
+    const { deleteMessageSeconds, reason } = options;
+    await this.request(`/guilds/${guildId}/bans/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        ...(deleteMessageSeconds !== undefined
+          ? { delete_message_seconds: deleteMessageSeconds }
+          : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async unbanMember(guildId: string, userId: string, reason?: string): Promise<void> {
+    await this.request(`/guilds/${guildId}/bans/${userId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async listBans(guildId: string): Promise<APIBan[]> {
+    return this.request<APIBan[]>(`/guilds/${guildId}/bans`);
+  }
+
+  async editMember(
+    guildId: string,
+    userId: string,
+    options: DiscordMemberEditOptions,
+    reason?: string,
+  ): Promise<APIGuildMember> {
+    return this.request<APIGuildMember>(`/guilds/${guildId}/members/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(options.nick !== undefined ? { nick: options.nick } : {}),
+        ...(options.roles !== undefined ? { roles: options.roles } : {}),
+        ...(options.communicationDisabledUntil !== undefined
+          ? { communication_disabled_until: options.communicationDisabledUntil }
+          : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /** Times out a member for the given duration (ms); null clears the timeout. */
+  timeoutMember(
+    guildId: string,
+    userId: string,
+    durationMs: number | null,
+    reason?: string,
+  ): Promise<APIGuildMember> {
+    const communicationDisabledUntil =
+      durationMs === null ? null : new Date(Date.now() + durationMs).toISOString();
+
+    return this.editMember(
+      guildId,
+      userId,
+      { communicationDisabledUntil },
+      reason,
+    );
+  }
+
+  // ---- Roles (v0.8) ----
+
+  async listRoles(guildId: string): Promise<APIRole[]> {
+    return this.request<APIRole[]>(`/guilds/${guildId}/roles`);
+  }
+
+  async createRole(
+    guildId: string,
+    options: DiscordRoleOptions,
+    reason?: string,
+  ): Promise<APIRole> {
+    return this.request<APIRole>(`/guilds/${guildId}/roles`, {
+      method: 'POST',
+      body: JSON.stringify({
+        ...(options.name !== undefined ? { name: options.name } : {}),
+        ...(options.permissions !== undefined ? { permissions: options.permissions } : {}),
+        ...(options.color !== undefined ? { color: options.color } : {}),
+        ...(options.hoist !== undefined ? { hoist: options.hoist } : {}),
+        ...(options.mentionable !== undefined ? { mentionable: options.mentionable } : {}),
+        ...(options.unicodeEmoji !== undefined ? { unicode_emoji: options.unicodeEmoji } : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async editRole(
+    guildId: string,
+    roleId: string,
+    options: DiscordRoleOptions,
+    reason?: string,
+  ): Promise<APIRole> {
+    return this.request<APIRole>(`/guilds/${guildId}/roles/${roleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(options.name !== undefined ? { name: options.name } : {}),
+        ...(options.permissions !== undefined ? { permissions: options.permissions } : {}),
+        ...(options.color !== undefined ? { color: options.color } : {}),
+        ...(options.hoist !== undefined ? { hoist: options.hoist } : {}),
+        ...(options.mentionable !== undefined ? { mentionable: options.mentionable } : {}),
+        ...(options.unicodeEmoji !== undefined ? { unicode_emoji: options.unicodeEmoji } : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async deleteRole(guildId: string, roleId: string, reason?: string): Promise<void> {
+    await this.request(`/guilds/${guildId}/roles/${roleId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /** Reorders roles; entries are `{ id, position }` pairs. */
+  async reorderRoles(
+    guildId: string,
+    positions: ReadonlyArray<{ id: string; position: number }>,
+    reason?: string,
+  ): Promise<APIRole[]> {
+    return this.request<APIRole[]>(`/guilds/${guildId}/roles`, {
+      method: 'PATCH',
+      body: JSON.stringify(positions),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async addRoleToMember(
+    guildId: string,
+    userId: string,
+    roleId: string,
+    reason?: string,
+  ): Promise<void> {
+    await this.request(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, {
+      method: 'PUT',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async removeRoleFromMember(
+    guildId: string,
+    userId: string,
+    roleId: string,
+    reason?: string,
+  ): Promise<void> {
+    await this.request(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  // ---- Emoji & stickers (v0.8) ----
+
+  async listGuildEmojis(guildId: string): Promise<APIEmoji[]> {
+    return this.request<APIEmoji[]>(`/guilds/${guildId}/emojis`);
+  }
+
+  async fetchGuildEmoji(guildId: string, emojiId: string): Promise<APIEmoji> {
+    return this.request<APIEmoji>(`/guilds/${guildId}/emojis/${emojiId}`);
+  }
+
+  /** Creates an emoji; `imageData` must be a data URI (base64). */
+  async createGuildEmoji(
+    guildId: string,
+    options: { name: string; imageData: string; roles?: string[] },
+    reason?: string,
+  ): Promise<APIEmoji> {
+    return this.request<APIEmoji>(`/guilds/${guildId}/emojis`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: options.name,
+        image: options.imageData,
+        ...(options.roles ? { roles: options.roles } : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async editGuildEmoji(
+    guildId: string,
+    emojiId: string,
+    options: { name?: string; roles?: string[] },
+    reason?: string,
+  ): Promise<APIEmoji> {
+    return this.request<APIEmoji>(`/guilds/${guildId}/emojis/${emojiId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(options.name !== undefined ? { name: options.name } : {}),
+        ...(options.roles !== undefined ? { roles: options.roles } : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async deleteGuildEmoji(guildId: string, emojiId: string, reason?: string): Promise<void> {
+    await this.request(`/guilds/${guildId}/emojis/${emojiId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async listGuildStickers(guildId: string): Promise<APISticker[]> {
+    return this.request<APISticker[]>(`/guilds/${guildId}/stickers`);
+  }
+
+  async fetchSticker(stickerId: string): Promise<APISticker> {
+    return this.request<APISticker>(`/stickers/${stickerId}`);
+  }
+
+  async deleteGuildSticker(guildId: string, stickerId: string, reason?: string): Promise<void> {
+    await this.request(`/guilds/${guildId}/stickers/${stickerId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  // ---- Webhooks (v0.8) ----
+
+  async listChannelWebhooks(channelId: string): Promise<APIWebhook[]> {
+    return this.request<APIWebhook[]>(`/channels/${channelId}/webhooks`);
+  }
+
+  async listGuildWebhooks(guildId: string): Promise<APIWebhook[]> {
+    return this.request<APIWebhook[]>(`/guilds/${guildId}/webhooks`);
+  }
+
+  async createWebhook(
+    channelId: string,
+    options: { name: string; avatar?: string },
+    reason?: string,
+  ): Promise<APIWebhook> {
+    return this.request<APIWebhook>(`/channels/${channelId}/webhooks`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: options.name,
+        ...(options.avatar ? { avatar: options.avatar } : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async fetchWebhook(webhookId: string): Promise<APIWebhook> {
+    return this.request<APIWebhook>(`/webhooks/${webhookId}`);
+  }
+
+  /** Fetches a webhook using only its token — no bot auth required. */
+  async fetchWebhookWithToken(webhookId: string, webhookToken: string): Promise<APIWebhook> {
+    return this.request<APIWebhook>(`/webhooks/${webhookId}/${webhookToken}`, {
+      authenticated: false,
+    });
+  }
+
+  async editWebhook(
+    webhookId: string,
+    options: { name?: string; avatar?: string | null; channelId?: string },
+    reason?: string,
+  ): Promise<APIWebhook> {
+    return this.request<APIWebhook>(`/webhooks/${webhookId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(options.name !== undefined ? { name: options.name } : {}),
+        ...(options.avatar !== undefined ? { avatar: options.avatar } : {}),
+        ...(options.channelId !== undefined ? { channel_id: options.channelId } : {}),
+      }),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  async deleteWebhook(webhookId: string, reason?: string): Promise<void> {
+    await this.request(`/webhooks/${webhookId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  // ---- Entitlements & SKUs (v0.8) ----
+
+  async listSKUs(): Promise<APISKU[]> {
+    return this.request<APISKU[]>(`/applications/${this.options.applicationId}/skus`);
+  }
+
+  async listEntitlements(
+    options: {
+      userId?: string;
+      skuIds?: readonly string[];
+      guildId?: string;
+      before?: string;
+      after?: string;
+      limit?: number;
+      excludeEnded?: boolean;
+    } = {},
+  ): Promise<APIEntitlement[]> {
+    const params = new URLSearchParams();
+    if (options.userId) params.set('user_id', options.userId);
+    if (options.skuIds?.length) params.set('sku_ids', options.skuIds.join(','));
+    if (options.guildId) params.set('guild_id', options.guildId);
+    if (options.before) params.set('before', options.before);
+    if (options.after) params.set('after', options.after);
+    if (options.limit !== undefined) params.set('limit', String(options.limit));
+    if (options.excludeEnded !== undefined)
+      params.set('exclude_ended', String(options.excludeEnded));
+
+    const query = params.size > 0 ? `?${params.toString()}` : '';
+    return this.request<APIEntitlement[]>(
+      `/applications/${this.options.applicationId}/entitlements${query}`,
+    );
+  }
+
+  /** Consumes a one-time-purchase entitlement. */
+  async consumeEntitlement(entitlementId: string): Promise<void> {
+    await this.request(`/applications/${this.options.applicationId}/entitlements/${entitlementId}/consume`, {
+      method: 'POST',
+    });
+  }
+
+  // ---- Application command permissions (v0.8) ----
+
+  async getCommandPermissions(
+    guildId: string,
+    commandId: string,
+  ): Promise<RESTPutAPIApplicationCommandPermissionsJSONBody> {
+    return this.request(
+      `/applications/${this.options.applicationId}/guilds/${guildId}/commands/${commandId}/permissions`,
+    );
+  }
+
+  /** Fully replaces a command's permission overrides for a guild. */
+  async setCommandPermissions(
+    guildId: string,
+    commandId: string,
+    permissions: ReadonlyArray<{
+      id: string;
+      type: ApplicationCommandPermissionType;
+      permission: boolean;
+    }>,
+    reason?: string,
+  ): Promise<void> {
+    await this.request(
+      `/applications/${this.options.applicationId}/guilds/${guildId}/commands/${commandId}/permissions`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ permissions }),
+        headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+      },
     );
   }
 
