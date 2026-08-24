@@ -18,18 +18,19 @@ import {
 import { InteractionFlags } from "../types/InteractionFlags.js";
 import type { MessageMiniActionRow } from "../types/ComponentTypes.js";
 
+/**
+ * Message component types that require the IsComponentsV2 message flag.
+ * Label (18), FileUpload (19), RadioGroup (21), CheckboxGroup (22) and
+ * Checkbox (23) are modal-only components and intentionally excluded.
+ */
 const COMPONENTS_V2_TYPES = new Set<number>([
-	ComponentType.Container,
 	ComponentType.Section,
 	ComponentType.TextDisplay,
+	ComponentType.Thumbnail,
 	ComponentType.MediaGallery,
 	ComponentType.File,
 	ComponentType.Separator,
-	ComponentType.Thumbnail,
-	18, // Label
-	19, // FileUpload
-	2001, // Radio
-	2002, // Checkbox
+	ComponentType.Container,
 ]);
 
 /** Union of helper flag enums and raw Discord message flags. */

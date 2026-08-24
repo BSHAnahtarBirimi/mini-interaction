@@ -14,6 +14,10 @@ export class ModalChannelSelectMenuBuilder implements JSONEncodable<APIChannelSe
   setPlaceholder(placeholder?: string): this { this.data.placeholder = placeholder; return this; }
   setMinValues(minValues?: number): this { this.data.minValues = minValues; return this; }
   setMaxValues(maxValues?: number): this { this.data.maxValues = maxValues; return this; }
+  /**
+   * @deprecated Discord does not accept `disabled` on modal select menus; the
+   * value is ignored during serialisation.
+   */
   setDisabled(disabled: boolean): this { this.data.disabled = disabled; return this; }
   setRequired(required: boolean): this { this.data.required = required; return this; }
   setChannelTypes(channelTypes: ChannelType[]): this { this.data.channelTypes = [...channelTypes]; return this; }
@@ -29,6 +33,6 @@ export class ModalChannelSelectMenuBuilder implements JSONEncodable<APIChannelSe
     if (this.data.minValues !== undefined) assertRange('ModalChannelSelectMenuBuilder', 'min_values', this.data.minValues, 0, 25);
     if (this.data.maxValues !== undefined) assertRange('ModalChannelSelectMenuBuilder', 'max_values', this.data.maxValues, 1, 25);
     if (this.data.minValues !== undefined && this.data.maxValues !== undefined && this.data.minValues > this.data.maxValues) throw new ValidationError('ModalChannelSelectMenuBuilder', 'min_values', 'cannot exceed max_values');
-    return { type: ComponentType.ChannelSelect, custom_id: customId, placeholder: this.data.placeholder, min_values: this.data.minValues, max_values: this.data.maxValues, disabled: this.data.disabled, required: this.data.required, channel_types: this.data.channelTypes, default_values: this.data.defaultValues };
+    return { type: ComponentType.ChannelSelect, custom_id: customId, placeholder: this.data.placeholder, min_values: this.data.minValues, max_values: this.data.maxValues, required: this.data.required, channel_types: this.data.channelTypes, default_values: this.data.defaultValues };
   }
 }

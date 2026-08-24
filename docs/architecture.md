@@ -13,6 +13,7 @@
 - Centralized token-based webhook usage for edit/follow-up.
 - Deterministic fallback response (`deferReply`) via adapter when a handler returns nothing.
 
-## Radio components
-- Implemented as explicit local API contract (`types/radio.ts`) to decouple from `discord-api-types` release lag.
-- Enforces single-default option and option length constraints.
+## Radio & checkbox components
+- Built on Discord's official modal-only components: RadioGroup (21), CheckboxGroup (22) and Checkbox (23) via `discord-api-types`.
+- Radio groups enforce 2-10 options with a single default; checkbox groups support up to 10 options with `min_values`/`max_values`.
+- These components must be placed inside a `Label` in a modal; they are not valid message components.

@@ -1,21 +1,20 @@
+import {
+	ComponentType,
+	type APIRadioGroupComponent,
+	type APIRadioGroupOption,
+} from 'discord-api-types/v10';
+
 /**
- * Discord API support for radio components may lag behind discord-api-types releases.
- * These local contracts are runtime-validated and serialized as raw component payloads.
+ * Radio groups are modal-only components (must be placed inside a Label).
+ * Serialised as Discord's official RadioGroup component (type 21).
+ *
+ * @see {@link https://discord.com/developers/docs/components/reference#radio-group}
  */
-export const RADIO_COMPONENT_TYPE = 2001 as const;
+export const RADIO_COMPONENT_TYPE = ComponentType.RadioGroup;
 
-export type APIRadioOption = {
-  label: string;
-  value: string;
-  description?: string;
-  emoji?: { id?: string; name?: string; animated?: boolean };
-  default?: boolean;
-};
+/** Alias matching Discord's own naming for the component type. */
+export const RADIO_GROUP_COMPONENT_TYPE = ComponentType.RadioGroup;
 
-export type APIRadioComponent = {
-  type: typeof RADIO_COMPONENT_TYPE;
-  custom_id: string;
-  disabled?: boolean;
-  required?: boolean;
-  options: APIRadioOption[];
-};
+export type APIRadioComponent = APIRadioGroupComponent;
+
+export type APIRadioOption = APIRadioGroupOption;

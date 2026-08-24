@@ -106,6 +106,12 @@ export class RoleSelectMenuBuilder
 			throw new Error("[RoleSelectMenuBuilder] custom id is required.");
 		}
 
+		if (this.data.placeholder && this.data.placeholder.length > 150) {
+			throw new Error(
+				"[RoleSelectMenuBuilder] placeholder must be 150 characters or less.",
+			);
+		}
+
 		return {
 			type: ComponentType.RoleSelect,
 			custom_id: customId,

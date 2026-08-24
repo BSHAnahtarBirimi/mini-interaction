@@ -77,7 +77,8 @@ export class ModalMentionableSelectMenuBuilder
 	}
 
 	/**
-	 * Toggles whether the select menu is disabled.
+	 * @deprecated Discord does not accept `disabled` on modal select menus; the
+	 * value is ignored during serialisation.
 	 */
 	setDisabled(disabled: boolean): this {
 		this.data.disabled = disabled;
@@ -116,13 +117,18 @@ export class ModalMentionableSelectMenuBuilder
 			);
 		}
 
+		if (this.data.placeholder && this.data.placeholder.length > 150) {
+			throw new Error(
+				"[ModalMentionableSelectMenuBuilder] placeholder must be 150 characters or less.",
+			);
+		}
+
 		return {
 			type: ComponentType.MentionableSelect,
 			custom_id: customId,
 			placeholder: this.data.placeholder,
 			min_values: this.data.minValues,
 			max_values: this.data.maxValues,
-			disabled: this.data.disabled,
 			required: this.data.required,
 			default_values: this.data.defaultValues,
 		};

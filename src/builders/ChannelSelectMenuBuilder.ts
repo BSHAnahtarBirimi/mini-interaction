@@ -122,6 +122,12 @@ export class ChannelSelectMenuBuilder
 			);
 		}
 
+		if (this.data.placeholder && this.data.placeholder.length > 150) {
+			throw new Error(
+				"[ChannelSelectMenuBuilder] placeholder must be 150 characters or less.",
+			);
+		}
+
 		return {
 			type: ComponentType.ChannelSelect,
 			custom_id: customId,

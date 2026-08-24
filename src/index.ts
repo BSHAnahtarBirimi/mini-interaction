@@ -103,27 +103,110 @@ export type {
 
 // New v10 core modules
 export { DiscordRestClient } from "./core/http/DiscordRestClient.js";
-export type { DiscordRestClientOptions } from "./core/http/DiscordRestClient.js";
+export type {
+	DiscordRestClientOptions,
+	DiscordMemberEditOptions,
+	DiscordRoleOptions,
+} from "./core/http/DiscordRestClient.js";
 export { DiscordSentMessage } from "./core/messages/DiscordSentMessage.js";
 export type {
 	DiscordMessageFile,
+	DiscordMessageReference,
 	DiscordReaction,
 	DiscordSendMessageOptions,
 	DiscordStartThreadOptions,
 	DiscordWebhookSendOptions,
+	DiscordCreateThreadOptions,
+	DiscordChannelEditOptions,
+	DiscordPollSpec,
+	DiscordPollAnswer,
 } from "./core/messages/message-payloads.js";
+export {
+	avatarURL,
+	defaultAvatarURL,
+	userBannerURL,
+	guildIconURL,
+	guildBannerURL,
+	guildSplashURL,
+	emojiURL,
+	stickerURL,
+	attachmentURL,
+} from "./utils/cdn.js";
+export type { ImageSize, ImageFormat, ImageOptions } from "./utils/cdn.js";
+export {
+	DISCORD_EPOCH,
+	isValidSnowflake,
+	snowflakeToTimestamp,
+	snowflakeToDate,
+} from "./utils/snowflake.js";
+export {
+	createLocalizationMap,
+	mergeLocalizationMaps,
+	resolveLocalization,
+} from "./utils/localization.js";
+export {
+	bold,
+	italic,
+	underline,
+	strikethrough,
+	inlineCode,
+	codeBlock,
+	blockQuote,
+	multilineBlockQuote,
+	spoiler,
+	subtext,
+	heading,
+	bulletList,
+	numberedList,
+	maskLink,
+	timestamp,
+	userMention,
+	roleMention,
+	channelMention,
+	slashCommandMention,
+	escapeMarkdown,
+} from "./utils/formatting.js";
+export type { DiscordTimestampStyle } from "./utils/formatting.js";
 export { DiscordWebhook } from "./core/webhooks/DiscordWebhook.js";
 export { InteractionContext } from "./core/interactions/InteractionContext.js";
 export type { InteractionContextOptions } from "./core/interactions/InteractionContext.js";
 export { verifyAndParseInteraction } from "./core/interactions/InteractionVerifier.js";
 export { InteractionRouter } from "./router/InteractionRouter.js";
+export type {
+	ChatInputHandler,
+	UserMenuHandler,
+	MessageMenuHandler,
+	EntryPointHandler,
+	ComponentHandler,
+	ModalHandler,
+	AutocompleteHandler,
+	RouterMiddleware,
+	RouterErrorHandler,
+	RouterFallback,
+	InteractionRouterOptions,
+} from "./router/InteractionRouter.js";
+export { AutocompleteContext } from "./router/AutocompleteContext.js";
+export type { FocusedOption } from "./router/AutocompleteContext.js";
 export {
 	MiniInteraction,
 	LegacyMiniInteractionAdapter,
 } from "./compat/MiniInteraction.js";
 export type { MiniInteractionOptions } from "./compat/MiniInteraction.js";
 export type { APIRadioComponent, APIRadioOption } from "./types/radio.js";
-export { RADIO_COMPONENT_TYPE } from "./types/radio.js";
-export type { APICheckboxComponent, APICheckboxOption } from "./types/checkbox.js";
-export { CHECKBOX_COMPONENT_TYPE } from "./types/checkbox.js";
+export {
+	RADIO_COMPONENT_TYPE,
+	RADIO_GROUP_COMPONENT_TYPE,
+} from "./types/radio.js";
+export type {
+	APICheckboxComponent,
+	APICheckboxGroupComponent,
+	APICheckboxGroupOption,
+	APICheckboxOption,
+} from "./types/checkbox.js";
+export {
+	CHECKBOX_COMPONENT_TYPE,
+	CHECKBOX_GROUP_COMPONENT_TYPE,
+} from "./types/checkbox.js";
+export { CheckboxGroupBuilder } from "./builders/CheckboxGroupBuilder.js";
+export type { CheckboxGroupBuilderData } from "./builders/CheckboxGroupBuilder.js";
 export { ValidationError } from "./types/validation.js";

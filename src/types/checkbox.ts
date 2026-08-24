@@ -1,21 +1,24 @@
+import { ComponentType } from 'discord-api-types/v10';
+import type {
+	APICheckboxComponent,
+	APICheckboxGroupComponent,
+	APICheckboxGroupOption,
+} from 'discord-api-types/v10';
+
 /**
- * Discord API support for checkbox components may lag behind discord-api-types releases.
- * These local contracts are runtime-validated and serialized as raw component payloads.
+ * Checkboxes are modal-only components.
+ * A single checkbox (type 23) holds no options; a checkbox group (type 22)
+ * holds up to 10 selectable options.
+ *
+ * @see {@link https://discord.com/developers/docs/components/reference#checkbox}
+ * @see {@link https://discord.com/developers/docs/components/reference#checkbox-group}
  */
-export const CHECKBOX_COMPONENT_TYPE = 2002 as const;
+export const CHECKBOX_COMPONENT_TYPE = ComponentType.Checkbox;
 
-export type APICheckboxOption = {
-  label: string;
-  value: string;
-  description?: string;
-  emoji?: { id?: string; name?: string; animated?: boolean };
-  default?: boolean;
-};
+/** Type value for multi-select checkbox groups (type 22). */
+export const CHECKBOX_GROUP_COMPONENT_TYPE = ComponentType.CheckboxGroup;
 
-export type APICheckboxComponent = {
-  type: typeof CHECKBOX_COMPONENT_TYPE;
-  custom_id: string;
-  disabled?: boolean;
-  required?: boolean;
-  options: APICheckboxOption[];
-};
+export type { APICheckboxComponent, APICheckboxGroupComponent, APICheckboxGroupOption };
+
+/** Backwards-compatible alias: the options-array model belongs to checkbox groups. */
+export type APICheckboxOption = APICheckboxGroupOption;

@@ -14,6 +14,41 @@ export class DiscordWebhook {
 		public readonly token: string,
 	) {}
 
+	/** Edits a message previously sent by this webhook. */
+	async edit(
+		messageId: string,
+		options: DiscordWebhookSendOptions,
+	): Promise<DiscordSentMessage> {
+		const requestInit = createMessageRequestInit(options);
+		const message = await this.rest.request<APIMessage>(
+			`/webhooks/${this.id}/${this.token}/messages/${messageId}`,
+			{
+				method: "PATCH",
+				...requestInit,
+				authenticated: false,
+			},
+		);
+
+		return new DiscordSentMessage(this.rest, message);
+	}
+
+	/** Deletes a message previously sent by this webhook. */
+	async delete(messageId: string, threadId?: string): Promise<void> {
+		const searchParams = new URLSearchParams();
+		if (threadId) {
+			searchParams.set("thread_id", threadId);
+		}
+
+		const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : "";
+		await this.rest.request(
+			`/webhooks/${this.id}/${this.token}/messages/${messageId}${suffix}`,
+			{
+				method: "DELETE",
+				authenticated: false,
+			},
+		);
+	}
+
 	async send(options: DiscordWebhookSendOptions): Promise<DiscordSentMessage> {
 		const { threadId, username, avatarUrl, ...messageOptions } = options;
 		const requestInit = createMessageRequestInit(messageOptions);
