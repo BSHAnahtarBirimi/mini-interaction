@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## 0.9.0 - 2026-08-24
 ### Added
 - Bucket-aware rate limiting in `DiscordRestClient`: learns `X-RateLimit-*` budgets per route, waits for bucket resets before spending calls, and honours `retry_after` from 429 bodies.
 - Snowflake utilities: `snowflakeToTimestamp`, `snowflakeToDate`, `isValidSnowflake`, `DISCORD_EPOCH`.
