@@ -2,6 +2,7 @@ import { MessageFlags } from "discord-api-types/v10";
 
 import type { APIAllowedMentions } from "discord-api-types/v10";
 
+import { InteractionFlags } from "../../types/InteractionFlags.js";
 import {
 	normaliseInteractionMessageData,
 	type InteractionMessageData,
@@ -74,6 +75,21 @@ export function normaliseDiscordMessagePayload(
 
 	if (options.stickerIds && options.stickerIds.length > 0) {
 		resolvedPayload.sticker_ids = options.stickerIds;
+	}
+
+	// Components V2 messages cannot be mixed with legacy content fields.
+	const resolvedFlags = Number(resolvedPayload.flags ?? 0);
+	if ((resolvedFlags & InteractionFlags.IsComponentsV2) === InteractionFlags.IsComponentsV2) {
+		const forbiddenFields: string[] = [];
+		if (resolvedPayload.content !== undefined && resolvedPayload.content !== null) forbiddenFields.push("content");
+		if (resolvedPayload.embeds !== undefined && resolvedPayload.embeds !== null) forbiddenFields.push("embeds");
+		if (resolvedPayload.sticker_ids !== undefined) forbiddenFields.push("sticker_ids");
+
+		if (forbiddenFields.length > 0) {
+			throw new Error(
+				`[MiniInteraction] ${forbiddenFields.join(", ")} cannot be used together with the IsComponentsV2 flag. Use TextDisplay components instead.`,
+			);
+		}
 	}
 
 	const files = options.files ?? [];

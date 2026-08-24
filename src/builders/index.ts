@@ -66,3 +66,5 @@ export { RadioBuilder } from "./RadioBuilder.js";
 export type { RadioBuilderData } from "./RadioBuilder.js";
 export { CheckboxBuilder } from "./CheckboxBuilder.js";
 export type { CheckboxBuilderData } from "./CheckboxBuilder.js";
+export { CheckboxGroupBuilder } from "./CheckboxGroupBuilder.js";
+export type { CheckboxGroupBuilderData } from "./CheckboxGroupBuilder.js";

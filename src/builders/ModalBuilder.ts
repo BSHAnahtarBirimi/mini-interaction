@@ -36,7 +36,12 @@ export class ModalBuilder implements JSONEncodable<APIModalInteractionResponseCa
     }
 
     for (const component of components) {
-      if (component.type !== ComponentType.ActionRow && component.type !== ComponentType.Label) {
+      const allowedTypes: readonly number[] = [
+        ComponentType.ActionRow, // deprecated in modals, still accepted for legacy rows
+        ComponentType.TextDisplay,
+        ComponentType.Label,
+      ];
+      if (!allowedTypes.includes(component.type)) {
         throw new ValidationError('ModalBuilder', 'components', `invalid modal top-level component type ${component.type}`);
       }
     }

@@ -127,6 +127,12 @@ export class StringSelectMenuBuilder
 			throw new Error("[StringSelectMenuBuilder] custom id is required.");
 		}
 
+		if (this.data.placeholder && this.data.placeholder.length > 150) {
+			throw new Error(
+				"[StringSelectMenuBuilder] placeholder must be 150 characters or less.",
+			);
+		}
+
 		if (options.length === 0) {
 			throw new Error(
 				"[StringSelectMenuBuilder] at least one option is required.",

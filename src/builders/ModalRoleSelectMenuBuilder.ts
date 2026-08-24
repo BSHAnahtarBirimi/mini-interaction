@@ -11,6 +11,10 @@ export class ModalRoleSelectMenuBuilder implements JSONEncodable<APIRoleSelectCo
   setPlaceholder(placeholder?: string): this { this.data.placeholder = placeholder; return this; }
   setMinValues(minValues?: number): this { this.data.minValues = minValues; return this; }
   setMaxValues(maxValues?: number): this { this.data.maxValues = maxValues; return this; }
+  /**
+   * @deprecated Discord does not accept `disabled` on modal select menus; the
+   * value is ignored during serialisation.
+   */
   setDisabled(disabled: boolean): this { this.data.disabled = disabled; return this; }
   setRequired(required: boolean): this { this.data.required = required; return this; }
   setDefaultValues(defaultValues: Iterable<APISelectMenuDefaultValue<SelectMenuDefaultValueType.Role>>): this {
@@ -24,6 +28,6 @@ export class ModalRoleSelectMenuBuilder implements JSONEncodable<APIRoleSelectCo
     if (this.data.minValues !== undefined) assertRange('ModalRoleSelectMenuBuilder', 'min_values', this.data.minValues, 0, 25);
     if (this.data.maxValues !== undefined) assertRange('ModalRoleSelectMenuBuilder', 'max_values', this.data.maxValues, 1, 25);
     if (this.data.minValues !== undefined && this.data.maxValues !== undefined && this.data.minValues > this.data.maxValues) throw new ValidationError('ModalRoleSelectMenuBuilder', 'min_values', 'cannot exceed max_values');
-    return { type: ComponentType.RoleSelect, custom_id: customId, placeholder: this.data.placeholder, min_values: this.data.minValues, max_values: this.data.maxValues, disabled: this.data.disabled, required: this.data.required, default_values: this.data.defaultValues };
+    return { type: ComponentType.RoleSelect, custom_id: customId, placeholder: this.data.placeholder, min_values: this.data.minValues, max_values: this.data.maxValues, required: this.data.required, default_values: this.data.defaultValues };
   }
 }

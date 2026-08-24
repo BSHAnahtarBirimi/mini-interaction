@@ -123,7 +123,20 @@ export {
 } from "./compat/MiniInteraction.js";
 export type { MiniInteractionOptions } from "./compat/MiniInteraction.js";
 export type { APIRadioComponent, APIRadioOption } from "./types/radio.js";
-export { RADIO_COMPONENT_TYPE } from "./types/radio.js";
-export type { APICheckboxComponent, APICheckboxOption } from "./types/checkbox.js";
-export { CHECKBOX_COMPONENT_TYPE } from "./types/checkbox.js";
+export {
+	RADIO_COMPONENT_TYPE,
+	RADIO_GROUP_COMPONENT_TYPE,
+} from "./types/radio.js";
+export type {
+	APICheckboxComponent,
+	APICheckboxGroupComponent,
+	APICheckboxGroupOption,
+	APICheckboxOption,
+} from "./types/checkbox.js";
+export {
+	CHECKBOX_COMPONENT_TYPE,
+	CHECKBOX_GROUP_COMPONENT_TYPE,
+} from "./types/checkbox.js";
+export { CheckboxGroupBuilder } from "./builders/CheckboxGroupBuilder.js";
+export type { CheckboxGroupBuilderData } from "./builders/CheckboxGroupBuilder.js";
 export { ValidationError } from "./types/validation.js";
