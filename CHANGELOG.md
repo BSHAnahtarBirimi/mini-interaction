@@ -1,6 +1,14 @@
 # Changelog
 
 ## Unreleased
+### Added
+- **Router v2** (`InteractionRouter`): handlers now receive wrapped interactions with option resolvers and reply helpers; context menus and Primary Entry Point commands route via `onUserCommand`, `onMessageCommand` and `onEntryPointCommand`.
+- Autocomplete support: `router.onAutocomplete()` with `AutocompleteContext` (`getFocusedOption()`, `respond(choices)` producing the `type: 8` response).
+- Pattern-based component custom ids: glob prefixes (`config:*`, longest match wins) and regex matchers, with exact ids taking priority.
+- Router middleware (`router.use`) and error hooks (`router.onError`), plus a fallback handler (`router.onFallback`).
+- Modal submit getters for new form components: `getRadioGroupValue`, `getCheckboxGroupValues`, `getCheckboxValue`, `getFileUploadValues`.
+- Follow-up deletion: `rest.deleteOriginal`/`deleteFollowup` and `ctx.deleteOriginal()`/`ctx.deleteFollowup()`.
+- `MIGRATION.md` covering legacy-to-modern stack migration and v0.5+ breaking changes.
 
 ## 0.5.0 - 2026-08-24
 
