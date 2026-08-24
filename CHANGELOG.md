@@ -2,6 +2,12 @@
 
 ## Unreleased
 ### Added
+- Message reads & bulk operations: `fetchMessage`, `fetchMessages` (before/after/around pagination), `bulkDeleteMessages` (2–100).
+- Typing & reaction management: `triggerTyping`, `fetchReactors`, `removeOwnReaction`, `removeUserReaction`, `removeAllReactions`, `removeAllReactionsForEmoji`.
+- Channel endpoints: `fetchChannel`, `editChannel` (incl. thread archive/lock), `deleteChannel`, `followAnnouncementChannel`.
+- Polls: `poll` option on all message sends, `endPoll`, and `fetchPollAnswerVoters`.
+- CDN URL builders: `avatarURL`, `defaultAvatarURL`, `userBannerURL`, `guildIconURL`, `guildBannerURL`, `guildSplashURL`, `emojiURL`, `stickerURL`, `attachmentURL`.
+### Added
 - **Router v2** (`InteractionRouter`): handlers now receive wrapped interactions with option resolvers and reply helpers; context menus and Primary Entry Point commands route via `onUserCommand`, `onMessageCommand` and `onEntryPointCommand`.
 - Autocomplete support: `router.onAutocomplete()` with `AutocompleteContext` (`getFocusedOption()`, `respond(choices)` producing the `type: 8` response).
 - Pattern-based component custom ids: glob prefixes (`config:*`, longest match wins) and regex matchers, with exact ids taking priority.
