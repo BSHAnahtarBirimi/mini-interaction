@@ -7,13 +7,13 @@ import {
 	SectionBuilder,
 	TextDisplayBuilder,
 } from "@minesa-org/mini-interaction";
-import type { ChatInputHandler } from "@minesa-org/mini-interaction";
+import type { SlashCommandHandler } from "@minesa-org/mini-interaction";
 
 /** `/ping` — Components V2 showcase (container + section + button). */
 export const pingCommand = {
 	data: new CommandBuilder().setName("ping").setDescription("pong"),
 
-	handler: (async (_interaction, ctx) => {
+	handler: (async (interaction) => {
 		const container = new ContainerBuilder().addComponent(
 			new SectionBuilder()
 				.addComponent(
@@ -29,9 +29,9 @@ export const pingCommand = {
 				),
 		);
 
-		return ctx.reply({
+		return interaction.reply({
 			flags: MessageFlags.IsComponentsV2,
 			components: [container.toJSON()],
 		});
-	}) satisfies ChatInputHandler,
+	}) satisfies SlashCommandHandler,
 };

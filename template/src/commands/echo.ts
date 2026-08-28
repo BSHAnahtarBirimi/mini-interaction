@@ -1,9 +1,9 @@
 import { CommandBuilder } from "@minesa-org/mini-interaction";
-import type { ChatInputHandler } from "@minesa-org/mini-interaction";
+import type { SlashCommandHandler } from "@minesa-org/mini-interaction";
 
 /**
  * `/echo` — demonstrates the v0.6+ wrapped interaction option resolver.
- * Handlers receive typed interactions; `ctx` carries the reply lifecycle.
+ * Handlers receive typed interactions with option resolvers and reply methods.
  */
 export const echoCommand = {
 	data: new CommandBuilder()
@@ -16,11 +16,11 @@ export const echoCommand = {
 				.setRequired(true),
 		),
 
-	handler: (async (interaction, ctx) => {
+	handler: (async (interaction) => {
 		const text = interaction.options.getString("text", true);
 
-		return ctx.reply({
+		return interaction.reply({
 			content: `🔊 ${text}`,
 		});
-	}) satisfies ChatInputHandler,
+	}) satisfies SlashCommandHandler,
 };

@@ -4,10 +4,10 @@ import type { ComponentHandler } from "@minesa-org/mini-interaction";
 export const pingMenu = {
 	customId: "ping_menu",
 
-	handler: (async (interaction, ctx) => {
+	handler: (async (interaction) => {
 		const value = interaction.getStringValues().join(", ");
 
-		return ctx.reply({
+		return interaction.reply({
 			content: `Value(s) of select menu you selected: ${value}`,
 		});
 	}) satisfies ComponentHandler,

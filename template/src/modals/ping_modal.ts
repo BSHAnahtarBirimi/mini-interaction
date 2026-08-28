@@ -4,10 +4,10 @@ import type { ModalHandler } from "@minesa-org/mini-interaction";
 export const pingModal = {
 	customId: "ping_modal",
 
-	handler: (async (interaction, ctx) => {
+	handler: (async (interaction) => {
 		const values = interaction.getSelectMenuValues("ping_menu_modal") ?? [];
 
-		return ctx.reply({
+		return interaction.reply({
 			content: values.length
 				? `You selected: ${values.join(", ")}`
 				: "You didn't select anything.",
