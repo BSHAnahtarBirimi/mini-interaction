@@ -38,6 +38,10 @@ import type {
   LobbyMemberUpdateInput,
   LobbyMetadata,
 } from '../../lobby/Lobby.js';
+import type {
+  APIVoiceRegion,
+  APIVoiceState,
+} from '../../voice/Voice.js';
 import { DiscordSentMessage } from '../messages/DiscordSentMessage.js';
 import {
   createMessageRequestInit,
@@ -123,6 +127,25 @@ export type LobbyMessageSendOptions = {
 	metadata?: LobbyMetadata;
 	/** Only flags creatable by the Social SDK are accepted. */
 	flags?: number;
+};
+
+export type ModifyCurrentUserVoiceStateOptions = {
+	/** The channel the user is in. Discord only accepts a stage channel. */
+	channelId?: string;
+	/** Toggles the user's suppress state. */
+	suppress?: boolean;
+	/**
+	 * ISO8601 time at which the user wants to speak — present or future only.
+	 * `null` clears the request.
+	 */
+	requestToSpeakTimestamp?: string | null;
+};
+
+export type ModifyUserVoiceStateOptions = {
+	/** The channel the user is in. Discord only accepts a stage channel. */
+	channelId?: string;
+	/** Toggles the user's suppress state — the only field this route accepts. */
+	suppress?: boolean;
 };
 
 type FetchLike = typeof fetch;
@@ -618,6 +641,7 @@ export class DiscordRestClient {
         ...(options.autoArchiveDuration !== undefined
           ? { auto_archive_duration: options.autoArchiveDuration }
           : {}),
+        ...(options.rtcRegion !== undefined ? { rtc_region: options.rtcRegion } : {}),
       }),
       headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
     });
@@ -1445,6 +1469,104 @@ export class DiscordRestClient {
   createLobbyChannelInviteForUser(lobbyId: string, userId: string): Promise<APILobbyInvite> {
     return this.request<APILobbyInvite>(`/lobbies/${lobbyId}/members/${userId}/invites`, {
       method: 'POST',
+    });
+  }
+
+  // ---- Voice states & regions (v0.13) ----
+
+  /**
+   * Lists the voice regions that can be used as a channel's `rtc_region`.
+   *
+   * The route is **not** guild-scoped, so every guild shares one rate-limit
+   * bucket. `deprecated` regions are still returned and still valid to read —
+   * {@link selectVoiceRegion} is what avoids picking one for a new connection.
+   *
+   * ```ts
+   * const region = selectVoiceRegion(await rest.listVoiceRegions());
+   * await rest.editChannel(channelId, { rtc_region: region?.id ?? null });
+   * ```
+   *
+   * @see {@link https://docs.discord.com/developers/resources/voice#list-voice-regions}
+   */
+  async listVoiceRegions(): Promise<APIVoiceRegion[]> {
+    return this.request<APIVoiceRegion[]>('/voice/regions');
+  }
+
+  /**
+   * Returns the current user's voice state in a guild.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/voice#get-current-user-voice-state}
+   */
+  async getCurrentUserVoiceState(guildId: string): Promise<APIVoiceState> {
+    return this.request<APIVoiceState>(`/guilds/${guildId}/voice-states/@me`);
+  }
+
+  /**
+   * Returns another user's voice state in a guild.
+   *
+   * Requires permission to connect to the channel that user is in; Discord
+   * answers `403` otherwise, and the client cannot check that for you.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/voice#get-user-voice-state}
+   */
+  async getUserVoiceState(guildId: string, userId: string): Promise<APIVoiceState> {
+    return this.request<APIVoiceState>(`/guilds/${guildId}/voice-states/${userId}`);
+  }
+
+  /**
+   * Updates the current user's voice state and resolves `void` (`204 No Content`).
+   *
+   * **Stage channels only**, and the user must already be connected to
+   * `channelId`. Suppressing yourself is always allowed; *unsuppressing* yourself
+   * needs `MUTE_MEMBERS`. Requesting to speak needs `REQUEST_TO_SPEAK`, while
+   * clearing your own request is always allowed. Unset fields are omitted so
+   * Discord keeps them, `requestToSpeakTimestamp: null` clears the request, and a
+   * timestamp may be now or in the future.
+   *
+   * The resulting state does not come back in this response — it arrives as a
+   * `VOICE_STATE_UPDATE` Gateway event.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/voice#modify-current-user-voice-state}
+   */
+  async modifyCurrentUserVoiceState(
+    guildId: string,
+    options: ModifyCurrentUserVoiceStateOptions,
+  ): Promise<void> {
+    await this.request(`/guilds/${guildId}/voice-states/@me`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(options.channelId !== undefined ? { channel_id: options.channelId } : {}),
+        ...(options.suppress !== undefined ? { suppress: options.suppress } : {}),
+        ...(options.requestToSpeakTimestamp !== undefined
+          ? { request_to_speak_timestamp: options.requestToSpeakTimestamp }
+          : {}),
+      }),
+    });
+  }
+
+  /**
+   * Updates another user's voice state and resolves `void` (`204 No Content`).
+   *
+   * Suppression is the only thing this route offers, so `MUTE_MEMBERS` is required
+   * in both directions, and unlike the `@me` route there is no
+   * `requestToSpeakTimestamp`. **Stage channels only**, and the user must already
+   * be connected to `channelId`. Unsuppressing a non-bot user stamps their
+   * `request_to_speak_timestamp` as now, and suppressing removes it — bots are
+   * exempt from the stamp.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/voice#modify-user-voice-state}
+   */
+  async modifyUserVoiceState(
+    guildId: string,
+    userId: string,
+    options: ModifyUserVoiceStateOptions,
+  ): Promise<void> {
+    await this.request(`/guilds/${guildId}/voice-states/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(options.channelId !== undefined ? { channel_id: options.channelId } : {}),
+        ...(options.suppress !== undefined ? { suppress: options.suppress } : {}),
+      }),
     });
   }
 

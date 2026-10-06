@@ -139,6 +139,53 @@ test("command permission sets PUT the full override list", async () => {
 	assert.deepEqual(calls[0].body, { permissions });
 });
 
+test("voice state and region endpoints", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.listVoiceRegions();
+	assert.equal(calls[0].path, "/voice/regions");
+	assert.equal(calls[0].method, undefined);
+
+	await rest.getCurrentUserVoiceState("g");
+	assert.equal(calls[1].path, "/guilds/g/voice-states/@me");
+
+	await rest.getUserVoiceState("g", "u");
+	assert.equal(calls[2].path, "/guilds/g/voice-states/u");
+
+	// `false` is meaningful, so it must survive the "omit unset" spread.
+	await rest.modifyCurrentUserVoiceState("g", {
+		channelId: "stage",
+		suppress: false,
+		requestToSpeakTimestamp: "2026-10-06T00:00:00.000000+00:00",
+	});
+	assert.equal(calls[3].method, "PATCH");
+	assert.equal(calls[3].path, "/guilds/g/voice-states/@me");
+	assert.deepEqual(calls[3].body, {
+		channel_id: "stage",
+		suppress: false,
+		request_to_speak_timestamp: "2026-10-06T00:00:00.000000+00:00",
+	});
+
+	// `null` clears the request; unset fields are omitted entirely.
+	await rest.modifyCurrentUserVoiceState("g", { requestToSpeakTimestamp: null });
+	assert.deepEqual(calls[4].body, { request_to_speak_timestamp: null });
+
+	// The other-user route takes only channel_id / suppress.
+	await rest.modifyUserVoiceState("g", "u", { suppress: true });
+	assert.equal(calls[5].method, "PATCH");
+	assert.equal(calls[5].path, "/guilds/g/voice-states/u");
+	assert.deepEqual(calls[5].body, { suppress: true });
+
+	// A listed region is only useful if a channel can be pinned to it, and
+	// `null` hands the choice back to Discord.
+	await rest.editChannel("ch", { rtcRegion: "us-east" });
+	assert.equal(calls[6].path, "/channels/ch");
+	assert.deepEqual(calls[6].body, { rtc_region: "us-east" });
+
+	await rest.editChannel("ch", { rtcRegion: null });
+	assert.deepEqual(calls[7].body, { rtc_region: null });
+});
+
 test("poll lifecycle endpoints", async () => {
 	const { rest, calls } = makeRest();
 
