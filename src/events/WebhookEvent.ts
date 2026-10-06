@@ -41,6 +41,28 @@ export type WebhookEventIntegrationType =
 	(typeof WebhookEventIntegrationType)[keyof typeof WebhookEventIntegrationType];
 
 /**
+ * Whether Discord delivers webhook events to your **Webhook Event URL**.
+ *
+ * Read it back from `GET /applications/@me` (or the Developer Portal) before
+ * assuming your subscriptions are live: Discord flips the status to
+ * `DisabledByDiscord` — and drops the endpoint URL — when your endpoint fails
+ * too many signature checks or stops acknowledging deliveries.
+ *
+ * @see {@link https://docs.discord.com/developers/resources/application#application-object-application-event-webhook-status}
+ */
+export const WebhookEventStatus = {
+	/** Webhook events are disabled by the developer. */
+	Disabled: 1,
+	/** Webhook events are enabled and Discord will deliver them. */
+	Enabled: 2,
+	/** Disabled by Discord, usually due to inactivity or repeated endpoint failures. */
+	DisabledByDiscord: 3,
+} as const;
+
+export type WebhookEventStatus =
+	(typeof WebhookEventStatus)[keyof typeof WebhookEventStatus];
+
+/**
  * Every event name an app can subscribe to.
  *
  * `ENTITLEMENT_UPDATE` and `ENTITLEMENT_DELETE` are included here even though
@@ -158,6 +180,8 @@ export type WebhookEventMessageBody = {
 	/** Channel object with recipient information. */
 	channel?: APIChannel;
 	application_id?: string;
+	/** The other participant's user id, on game direct messages. */
+	recipient_id?: string;
 };
 
 /** A standard message object; Linked Channel messages additionally carry `lobby_id`. */
@@ -185,7 +209,7 @@ export type WebhookEventSdkDirectMessage = {
 	activity?: APIMessageActivity;
 	/** Partial application object, sent with Rich Presence-related chat embeds. */
 	application?: Partial<APIApplication>;
-	/** Present when the message also targetted a standard Discord channel. */
+	/** The other participant's user id, when the delivery carries one. */
 	recipient_id?: string;
 };
 

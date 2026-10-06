@@ -18,6 +18,7 @@ import {
 	WebhookEventEndpoint,
 	WebhookEventPayloadType,
 	WebhookEventRouter,
+	WebhookEventStatus,
 	WebhookEventType,
 	isDeprecatedVoiceRegion,
 	isPublicMediaUrl,
@@ -88,6 +89,7 @@ test("the package barrel re-exports the Webhook Events surface", () => {
 	assert.equal(typeof isWebhookEventPayload, "function");
 	assert.equal(WebhookEventPayloadType.Ping, 0);
 	assert.equal(WebhookEventType.ApplicationDeauthorized, "APPLICATION_DEAUTHORIZED");
+	assert.equal(WebhookEventStatus.Enabled, 2);
 
 	// The per-event payload type must narrow through the barrel as well.
 	const payload: WebhookEventPayloadOf<"APPLICATION_AUTHORIZED"> = {

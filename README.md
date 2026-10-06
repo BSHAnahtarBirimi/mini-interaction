@@ -422,6 +422,28 @@ export async function POST(request: Request) {
 }
 ```
 
+Subscribing works from code too — the same thing the portal's **Webhooks** page
+does — with `editCurrentApplication`, and `getCurrentApplication` reads the
+current URL, status and subscribed types back:
+
+```ts
+import { WebhookEventStatus, WebhookEventType } from '@minesa-org/mini-interaction';
+
+await rest.editCurrentApplication({
+  eventWebhooksUrl: 'https://example.com/discord/webhook-events',
+  eventWebhooksStatus: WebhookEventStatus.Enabled,
+  eventWebhooksTypes: [
+    WebhookEventType.ApplicationAuthorized,
+    WebhookEventType.ApplicationDeauthorized,
+  ],
+});
+```
+
+Discord verifies the URL with a signed `PING` before saving it, and flips
+`event_webhooks_status` to `DisabledByDiscord` — dropping the URL — if your
+endpoint fails its routine signature checks, so read the status back before
+assuming deliveries are live.
+
 `handleFetch` answers with a bodiless **`204`**, **`401`** when the Ed25519
 signature is missing or invalid, **`400`** for an unparseable body, and **`500`**
 when a handler throws. Discord signs every delivery — including the `PING` it

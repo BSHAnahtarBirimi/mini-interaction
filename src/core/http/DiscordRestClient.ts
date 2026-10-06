@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import type {
+  APIApplication,
   APIBan,
   APIChannel,
   APIEmoji,
@@ -29,6 +30,10 @@ import {
   type PrimaryProfileData,
   type UpdateIdentityProfileBody,
 } from '../../identity/ApplicationIdentityProfile.js';
+import {
+  WebhookEventStatus,
+  type WebhookEventType,
+} from '../../events/WebhookEvent.js';
 import type {
   APILobby,
   APILobbyInvite,
@@ -146,6 +151,33 @@ export type ModifyUserVoiceStateOptions = {
 	channelId?: string;
 	/** Toggles the user's suppress state — the only field this route accepts. */
 	suppress?: boolean;
+};
+
+/**
+ * The application object as returned by `GET`/`PATCH /applications/@me`.
+ *
+ * Same as `discord-api-types`' `APIApplication`, except `event_webhooks_types`
+ * is widened to the library's {@link WebhookEventType}: Discord accepts and
+ * returns the lobby and Social SDK message event names there, which the
+ * bundled `ApplicationWebhookEventType` enum does not list.
+ */
+export type APICurrentApplication = Omit<APIApplication, 'event_webhooks_types'> & {
+	event_webhooks_types?: WebhookEventType[];
+};
+
+/** Fields {@link DiscordRestClient.editCurrentApplication} can update. */
+export type EditCurrentApplicationOptions = {
+	/**
+	 * Public URL Discord POSTs webhook events to. Must acknowledge `PING`s and
+	 * verify signatures before Discord will save it.
+	 */
+	eventWebhooksUrl?: string;
+	/** Turns event delivery on (`Enabled`) or off (`Disabled`). */
+	eventWebhooksStatus?: WebhookEventStatus;
+	/** The event types to subscribe to; replaces the current list. */
+	eventWebhooksTypes?: readonly WebhookEventType[];
+	/** Interactions endpoint URL, i.e. where Discord sends slash commands. */
+	interactionsEndpointUrl?: string;
 };
 
 type FetchLike = typeof fetch;
@@ -1000,6 +1032,56 @@ export class DiscordRestClient {
     await this.request(`/webhooks/${webhookId}`, {
       method: 'DELETE',
       headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  // ---- Current application & webhook event subscriptions (v0.11) ----
+
+  /** Returns the application object for the requesting bot token. */
+  async getCurrentApplication(): Promise<APICurrentApplication> {
+    return this.request<APICurrentApplication>('/applications/@me');
+  }
+
+  /**
+   * Edits the current application. Only the fields you pass are sent, so
+   * Discord keeps everything else as-is.
+   *
+   * This is the API equivalent of the Developer Portal's **Webhooks** page: point
+   * `eventWebhooksUrl` at your {@link WebhookEventEndpoint}-backed route, set
+   * `eventWebhooksStatus` to {@link WebhookEventStatus.Enabled} and list the
+   * `eventWebhooksTypes` you want delivered. Discord validates the URL with a
+   * signed `PING` before saving — if it is unreachable or fails signature
+   * verification, the request is rejected.
+   *
+   * ```ts
+   * await rest.editCurrentApplication({
+   *   eventWebhooksUrl: 'https://example.com/discord/webhook-events',
+   *   eventWebhooksStatus: WebhookEventStatus.Enabled,
+   *   eventWebhooksTypes: [WebhookEventType.ApplicationDeauthorized],
+   * });
+   * ```
+   *
+   * @see {@link https://docs.discord.com/developers/resources/application#edit-current-application}
+   */
+  async editCurrentApplication(
+    options: EditCurrentApplicationOptions,
+  ): Promise<APICurrentApplication> {
+    return this.request<APICurrentApplication>('/applications/@me', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(options.eventWebhooksUrl !== undefined
+          ? { event_webhooks_url: options.eventWebhooksUrl }
+          : {}),
+        ...(options.eventWebhooksStatus !== undefined
+          ? { event_webhooks_status: options.eventWebhooksStatus }
+          : {}),
+        ...(options.eventWebhooksTypes !== undefined
+          ? { event_webhooks_types: options.eventWebhooksTypes }
+          : {}),
+        ...(options.interactionsEndpointUrl !== undefined
+          ? { interactions_endpoint_url: options.interactionsEndpointUrl }
+          : {}),
+      }),
     });
   }
 
