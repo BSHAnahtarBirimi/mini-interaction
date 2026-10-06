@@ -34,6 +34,14 @@ import {
 	type SendGameStatsOptions,
 	type WebhookEventPayloadOf,
 	type WebhookEventRequest,
+	ConnectionVisibility,
+	UserFlags,
+	UserPremiumType,
+	type APIPartialCurrentUserGuild,
+	type CreateGroupDMOptions,
+	type EditCurrentUserOptions,
+	type GetCurrentUserGuildsOptions,
+	type UpdateApplicationRoleConnectionOptions,
 } from "./index.js";
 
 test("the package barrel re-exports the Game Stats surface", () => {
@@ -61,6 +69,33 @@ test("the package barrel re-exports the Game Stats surface", () => {
 	assert.equal(kind, 1);
 	assert.equal(options.mode, "merge");
 	assert.equal(profile.username, "ada");
+});
+
+test("the package barrel re-exports the User surface", () => {
+	assert.equal(UserFlags.Staff, 1);
+	assert.equal(UserPremiumType.NitroBasic, 3);
+	assert.equal(ConnectionVisibility.Everyone, 1);
+
+	// Types must resolve through the barrel too, not just the values.
+	const guildsQuery: GetCurrentUserGuildsOptions = { shard: 0, withCounts: true };
+	const partialGuild: APIPartialCurrentUserGuild = {
+		id: "1",
+		name: "Krew",
+		icon: null,
+		banner: null,
+		owner: true,
+		permissions: "8",
+		features: [],
+	};
+	const edit: EditCurrentUserOptions = { avatar: null };
+	const groupDm: CreateGroupDMOptions = { accessTokens: ["t"] };
+	const roleConnection: UpdateApplicationRoleConnectionOptions = { metadata: {} };
+
+	assert.equal(guildsQuery.shard, 0);
+	assert.equal(partialGuild.owner, true);
+	assert.equal(edit.avatar, null);
+	assert.deepEqual(groupDm.accessTokens, ["t"]);
+	assert.deepEqual(roleConnection.metadata, {});
 });
 
 test("the package barrel re-exports the Voice surface", () => {

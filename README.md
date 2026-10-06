@@ -14,8 +14,8 @@ Mini Interaction is a high-performance framework designed for building Discord H
 - **🧩 Fluent Builders**: Construct complex messages and components with a premium API.
 - **🔐 Integrated OAuth**: Simple handlers for Discord OAuth2 flows, plus an `OAuth2Builder` with a typed, documented scope registry.
 - **🔗 Linked Channels**: Bind lobbies to guild text channels, relay messages both ways, and mint server invites.
-- **🎮 Game Stats Widgets**: Push player stats onto Discord profiles via the Application Identity Profile API.
-- **🔊 Voice States & Regions**: Read voice membership, drive stage-channel speak state, and pin a channel's `rtc_region`.
+- **🎮 Game Stats Widgets**: Push player stats onto Discord profiles via the Application Identity Profile API. - **🔊 Voice States & Regions**: Read voice membership, drive stage-channel speak state, and pin a channel's `rtc_region`.
+ - **👥 Users**: Fetch and edit users, list the current user's guilds, open DMs, read connections, and manage application role connections.
 - **📨 Webhook Events**: Typed, signature-verified HTTP events with an ack-correct endpoint.
 - **🗃️ Mini Database**: Lightweight, document-based storage integration.
 
@@ -379,6 +379,67 @@ non-bot user stamps it with the current time, while bots are exempt.
 
 Both `PATCH` calls answer **`204 No Content`** and resolve `void` — the new state
 arrives over the Gateway as a `VOICE_STATE_UPDATE` event, not in the response.
+
+---
+
+## 👥 Users
+
+Users are Discord's base entity. This library models the full user object
+(including `collectibles`, `avatar_decoration_data` and `primary_guild`) and
+covers the whole User Resource: reads, account edits, the current user's guild
+list, DMs, connections, and application role connections.
+
+```ts
+import { DiscordRestClient } from '@minesa-org/mini-interaction';
+
+const rest = new DiscordRestClient({
+  token: process.env.DISCORD_TOKEN!,
+  applicationId: process.env.DISCORD_APPLICATION_ID!,
+});
+
+// Reads: the bot's own account, any user by id, and your membership view.
+const me = await rest.fetchCurrentUser();
+const user = await rest.fetchUser('80351110224678912');
+const member = await rest.fetchCurrentUserGuildMember(guildId);
+
+// Account settings (bot accounts edit the bot's profile).
+await rest.editCurrentUser({ username: 'Nelly', banner: null });
+
+// The current user's guilds — 200 by default, which is the maximum for
+// non-bot users, so no pagination is needed for normal apps.
+const guilds = await rest.listCurrentUserGuilds({ withCounts: true });
+
+// Leave a guild the current user is in.
+await rest.leaveGuild(guildId);
+
+// DMs: prefer starting these from a user action — opening many DMs quickly
+// can get the app rate limited or blocked.
+const dm = await rest.createDM(userId);
+const groupDm = await rest.createGroupDM({ accessTokens, nicks });
+
+// Connections and application role connections (OAuth2-token routes).
+const connections = await rest.listCurrentUserConnections();
+await rest.updateApplicationRoleConnection({
+  platformName: 'GitHub',
+  platformUsername: 'nelly',
+  metadata: { commits: '42' },
+});
+const connection = await rest.fetchApplicationRoleConnection();
+await rest.deleteApplicationRoleConnection();
+```
+
+Notes:
+
+- **Usernames** are 2–32 characters; `@`, `#`, `:`, triple backticks, `discord`,
+  `everyone` and `here` are not allowed. Changing `username` may randomize the
+  user's discriminator.
+- **Large bot sharding**: `listCurrentUserGuilds({ shard })` is required for
+  sharded bots (`0` … `max_concurrency - 1` from the session start limit), and
+  that shard id is *not* the Gateway shard id.
+- **Role connections** default to the client's configured application id and
+  can target another application id explicitly; they need an OAuth2 token with
+  the `role_connections.write` scope when acting for a user. The connections
+  and guild-member routes act on `@me` only.
 
 ---
 
