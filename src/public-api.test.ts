@@ -19,12 +19,17 @@ import {
 	WebhookEventPayloadType,
 	WebhookEventRouter,
 	WebhookEventType,
+	isDeprecatedVoiceRegion,
 	isPublicMediaUrl,
 	isWebhookEventPayload,
+	selectVoiceRegion,
 	verifyWebhookEventRequest,
+	type APIVoiceRegion,
 	type ApplicationIdentityProfile,
 	type DynamicFieldType as DynamicFieldTypeAlias,
 	type DynamicProfileField,
+	type ModifyCurrentUserVoiceStateOptions,
+	type ModifyUserVoiceStateOptions,
 	type SendGameStatsOptions,
 	type WebhookEventPayloadOf,
 	type WebhookEventRequest,
@@ -55,6 +60,24 @@ test("the package barrel re-exports the Game Stats surface", () => {
 	assert.equal(kind, 1);
 	assert.equal(options.mode, "merge");
 	assert.equal(profile.username, "ada");
+});
+
+test("the package barrel re-exports the Voice surface", () => {
+	assert.equal(typeof selectVoiceRegion, "function");
+	assert.equal(typeof isDeprecatedVoiceRegion, "function");
+
+	// Types must resolve through the barrel too, not just the values.
+	const regions: APIVoiceRegion[] = [
+		{ id: "retired", name: "Retired", optimal: false, deprecated: true, custom: false },
+		{ id: "eu", name: "EU Central", optimal: false, deprecated: false, custom: false },
+	];
+	const current: ModifyCurrentUserVoiceStateOptions = { requestToSpeakTimestamp: null };
+	const other: ModifyUserVoiceStateOptions = { suppress: true };
+
+	assert.equal(selectVoiceRegion(regions)?.id, "eu");
+	assert.equal(isDeprecatedVoiceRegion(regions[0]), true);
+	assert.equal(current.requestToSpeakTimestamp, null);
+	assert.equal(other.suppress, true);
 });
 
 test("the package barrel re-exports the Webhook Events surface", () => {

@@ -151,6 +151,8 @@ export type {
 	LobbyModifyOptions,
 	LobbyCreateOrJoinOptions,
 	LobbyMessageSendOptions,
+	ModifyCurrentUserVoiceStateOptions,
+	ModifyUserVoiceStateOptions,
 } from "./core/http/DiscordRestClient.js";
 export {
 	LobbyMemberFlags,
@@ -169,6 +171,11 @@ export type {
 	LobbyMemberUpdateInput,
 	LobbyMetadata,
 } from "./lobby/Lobby.js";
+export {
+	selectVoiceRegion,
+	isDeprecatedVoiceRegion,
+} from "./voice/Voice.js";
+export type { APIVoiceState, APIVoiceRegion } from "./voice/Voice.js";
 export {
 	DynamicFieldType,
 	APPLICATION_IDENTITY_LIMITS,

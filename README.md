@@ -15,6 +15,7 @@ Mini Interaction is a high-performance framework designed for building Discord H
 - **🔐 Integrated OAuth**: Simple handlers for Discord OAuth2 flows, plus an `OAuth2Builder` with a typed, documented scope registry.
 - **🔗 Linked Channels**: Bind lobbies to guild text channels, relay messages both ways, and mint server invites.
 - **🎮 Game Stats Widgets**: Push player stats onto Discord profiles via the Application Identity Profile API.
+- **🔊 Voice States & Regions**: Read voice membership, drive stage-channel speak state, and pin a channel's `rtc_region`.
 - **📨 Webhook Events**: Typed, signature-verified HTTP events with an ack-correct endpoint.
 - **🗃️ Mini Database**: Lightweight, document-based storage integration.
 
@@ -325,6 +326,59 @@ Requirements:
 Payloads are validated client-side against Discord's documented limits and
 throw an `ApplicationIdentityProfileError` carrying a machine-readable `code`
 (`payload_too_large`, `too_many_dynamic_fields`, `string_value_too_long`, …).
+
+---
+
+## 🔊 Voice States & Regions
+
+The Voice Resource is the bookkeeping half of Discord voice: who is connected to
+which voice or stage channel, whether they are allowed to speak, and which region
+a channel connects through. (The audio itself — the voice websocket, UDP,
+encryption — is the Gateway's job and out of scope for an HTTP-interaction
+library.)
+
+```ts
+import { DiscordRestClient, selectVoiceRegion } from '@minesa-org/mini-interaction';
+
+const rest = new DiscordRestClient({
+  token: process.env.DISCORD_TOKEN!,
+  applicationId: process.env.DISCORD_APPLICATION_ID!,
+});
+
+// Who is this user connected to, and can they speak?
+const state = await rest.getUserVoiceState(guildId, userId);
+console.log(state.channel_id, state.suppress, state.request_to_speak_timestamp);
+
+await rest.getCurrentUserVoiceState(guildId); // the bot's own state
+
+// Stage channels: grant yourself permission to speak, then take it back.
+await rest.modifyCurrentUserVoiceState(guildId, {
+  channelId: stageChannelId,
+  suppress: false, // unsuppressing *yourself* needs MUTE_MEMBERS
+  requestToSpeakTimestamp: null, // null clears a pending request
+});
+
+// Suppress another speaker (`MUTE_MEMBERS`, stage channels only).
+await rest.modifyUserVoiceState(guildId, speakerId, {
+  channelId: stageChannelId,
+  suppress: true,
+});
+
+// Regions: this skips deprecated regions and prefers the `optimal` one.
+const region = selectVoiceRegion(await rest.listVoiceRegions());
+await rest.editChannel(stageChannelId, { rtcRegion: region?.id ?? null });
+```
+
+Both `PATCH /guilds/{guild.id}/voice-states/...` routes are **stage-channel
+only**, and the target user must already be connected to `channel_id`. You can
+always suppress *yourself*, but unsuppressing yourself needs `MUTE_MEMBERS`, and
+the other-user route needs that permission in both directions. Requesting to
+speak needs `REQUEST_TO_SPEAK`, while clearing your own request never does.
+Suppressing a user drops their `request_to_speak_timestamp`; unsuppressing a
+non-bot user stamps it with the current time, while bots are exempt.
+
+Both `PATCH` calls answer **`204 No Content`** and resolve `void` — the new state
+arrives over the Gateway as a `VOICE_STATE_UPDATE` event, not in the response.
 
 ---
 

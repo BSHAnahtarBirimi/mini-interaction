@@ -80,6 +80,11 @@ export type DiscordChannelEditOptions = {
 	locked?: boolean;
 	/** Thread only: auto-archive duration in minutes. */
 	autoArchiveDuration?: number;
+	/**
+	 * Voice and stage channels only: the region the channel connects through.
+	 * `null` lets Discord choose. See `selectVoiceRegion` for picking an id.
+	 */
+	rtcRegion?: string | null;
 };
 
 /** Options for creating a thread directly in a channel (no source message). */
