@@ -143,9 +143,11 @@ export {
 	DiscordRestApiError,
 } from "./core/http/DiscordRestClient.js";
 export type {
+	APICurrentApplication,
 	DiscordRestClientOptions,
 	DiscordMemberEditOptions,
 	DiscordRoleOptions,
+	EditCurrentApplicationOptions,
 	SendGameStatsOptions,
 	LobbyCreateOptions,
 	LobbyModifyOptions,
@@ -202,6 +204,7 @@ export type {
 export {
 	WebhookEventPayloadType,
 	WebhookEventIntegrationType,
+	WebhookEventStatus,
 	WebhookEventType,
 	isWebhookEventPayload,
 } from "./events/WebhookEvent.js";

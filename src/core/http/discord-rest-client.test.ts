@@ -2,6 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { DiscordRestClient } from "./DiscordRestClient.js";
+import {
+	WebhookEventStatus,
+	WebhookEventType,
+} from "../../events/WebhookEvent.js";
 import type { ApplicationCommandPermissionType } from "discord-api-types/v10";
 
 const BASE = "https://discord.com/api/v10";
@@ -195,4 +199,34 @@ test("poll lifecycle endpoints", async () => {
 
 	await rest.fetchPollAnswerVoters("ch", "m", 2);
 	assert.equal(calls[1].path, "/channels/ch/polls/m/answers/2/voters");
+});
+
+test("current application endpoints hit /applications/@me", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.getCurrentApplication();
+	assert.equal(calls[0].path, "/applications/@me");
+	assert.equal(calls[0].method, undefined);
+
+	await rest.editCurrentApplication({
+		eventWebhooksUrl: "https://example.com/webhook-events",
+		eventWebhooksStatus: WebhookEventStatus.Enabled,
+		eventWebhooksTypes: [
+			WebhookEventType.ApplicationDeauthorized,
+			WebhookEventType.LobbyMessageCreate,
+		],
+	});
+	assert.equal(calls[1].path, "/applications/@me");
+	assert.equal(calls[1].method, "PATCH");
+	assert.deepEqual(calls[1].body, {
+		event_webhooks_url: "https://example.com/webhook-events",
+		event_webhooks_status: 2,
+		event_webhooks_types: ["APPLICATION_DEAUTHORIZED", "LOBBY_MESSAGE_CREATE"],
+	});
+
+	// Unset fields are omitted so Discord keeps its current values.
+	await rest.editCurrentApplication({
+		eventWebhooksStatus: WebhookEventStatus.Disabled,
+	});
+	assert.deepEqual(calls[2].body, { event_webhooks_status: 1 });
 });
