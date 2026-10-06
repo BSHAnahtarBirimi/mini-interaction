@@ -217,7 +217,7 @@ export function createMessageRequestInit(
 	return { body: formData };
 }
 
-function toBlob(file: DiscordMessageFile): Blob {
+export function toBlob(file: DiscordMessageFile): Blob {
 	if (file.data instanceof Blob) {
 		return file.data;
 	}

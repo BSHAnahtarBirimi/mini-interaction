@@ -191,6 +191,18 @@ export type {
 	UpdateApplicationRoleConnectionOptions,
 } from "./users/Users.js";
 export {
+	StickerFormatType,
+	StickerType,
+} from "./stickers/Stickers.js";
+export type {
+	APISticker,
+	APIStickerItem,
+	APIStickerPack,
+	CreateGuildStickerOptions,
+	ModifyGuildStickerOptions,
+	StickerPacksListResult,
+} from "./stickers/Stickers.js";
+export {
 	DynamicFieldType,
 	APPLICATION_IDENTITY_LIMITS,
 	APPLICATION_IDENTITY_PROFILE_ERRORS,

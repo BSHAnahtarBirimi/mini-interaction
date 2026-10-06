@@ -42,6 +42,14 @@ import {
 	type EditCurrentUserOptions,
 	type GetCurrentUserGuildsOptions,
 	type UpdateApplicationRoleConnectionOptions,
+	StickerType,
+	StickerFormatType,
+	type APISticker,
+	type APIStickerItem,
+	type APIStickerPack,
+	type CreateGuildStickerOptions,
+	type ModifyGuildStickerOptions,
+	type StickerPacksListResult,
 } from "./index.js";
 
 test("the package barrel re-exports the Game Stats surface", () => {
@@ -149,4 +157,64 @@ test("the package barrel re-exports the Webhook Events surface", () => {
 	const request: WebhookEventRequest = payload;
 
 	assert.equal(request.application_id, "app-1");
+});
+
+test("the package barrel re-exports the Sticker Resource surface", () => {
+	assert.equal(StickerType.Standard, 1);
+	assert.equal(StickerType.Guild, 2);
+	assert.equal(StickerFormatType.Lottie, 3);
+
+	// The documented example must narrow through the barrel as well.
+	const sticker: APISticker = {
+		id: "749054660769218631",
+		name: "Wave",
+		tags: "wumpus, hello, wave",
+		type: StickerType.Standard,
+		format_type: StickerFormatType.Lottie,
+		description: "Wumpus waves hello",
+		pack_id: "847199849233514549",
+		sort_value: 12,
+	};
+	assert.equal(sticker.format_type, 3);
+
+	const item: APIStickerItem = {
+		id: sticker.id,
+		name: sticker.name,
+		format_type: sticker.format_type,
+	};
+	assert.equal(item.name, "Wave");
+
+	const pack: APIStickerPack = {
+		id: "847199849233514549",
+		stickers: [sticker],
+		name: "Wumpus Beyond",
+		sku_id: "847199849233514547",
+		description: "Say hello to Wumpus!",
+	};
+	assert.equal(pack.stickers.length, 1);
+
+	const create: CreateGuildStickerOptions = {
+		name: "Wave",
+		description: "",
+		tags: "wave",
+	};
+	const modify: ModifyGuildStickerOptions = { description: null };
+	const packs: StickerPacksListResult = { sticker_packs: [pack] };
+	assert.equal(create.name.length >= 2, true);
+	assert.equal(modify.description, null);
+	assert.equal(packs.sticker_packs[0].sku_id, "847199849233514547");
+
+	// The eight sticker routes exist on the client.
+	for (const method of [
+		"fetchSticker",
+		"listStickerPacks",
+		"fetchStickerPack",
+		"listGuildStickers",
+		"fetchGuildSticker",
+		"createGuildSticker",
+		"modifyGuildSticker",
+		"deleteGuildSticker",
+	]) {
+		assert.equal(typeof (DiscordRestClient.prototype as unknown as Record<string, unknown>)[method], "function", method);
+	}
 });
