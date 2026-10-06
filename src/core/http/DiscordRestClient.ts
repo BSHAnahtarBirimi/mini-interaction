@@ -1,8 +1,10 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import type {
   APIApplication,
+  APIApplicationRoleConnection,
   APIBan,
   APIChannel,
+  APIConnection,
   APIEmoji,
   APIEntitlement,
   APIGuild,
@@ -14,9 +16,11 @@ import type {
   APIUser,
   APIWebhook,
   ApplicationCommandPermissionType,
+  RESTPostAPICurrentUserCreateDMChannelJSONBody,
   RESTPutAPIApplicationCommandPermissionsJSONBody,
   RESTPutAPIApplicationRoleConnectionMetadataJSONBody,
   RESTPutAPIApplicationRoleConnectionMetadataResult,
+  RESTPutAPICurrentUserApplicationRoleConnectionJSONBody,
 } from 'discord-api-types/v10';
 
 import {
@@ -43,6 +47,13 @@ import type {
   LobbyMemberUpdateInput,
   LobbyMetadata,
 } from '../../lobby/Lobby.js';
+import type {
+  APIPartialCurrentUserGuild,
+  CreateGroupDMOptions,
+  EditCurrentUserOptions,
+  GetCurrentUserGuildsOptions,
+  UpdateApplicationRoleConnectionOptions,
+} from '../../users/Users.js';
 import type {
   APIVoiceRegion,
   APIVoiceState,
@@ -1649,6 +1660,193 @@ export class DiscordRestClient {
         ...(options.channelId !== undefined ? { channel_id: options.channelId } : {}),
         ...(options.suppress !== undefined ? { suppress: options.suppress } : {}),
       }),
+    });
+  }
+
+  // ---- Users (v0.12) ----
+
+  /**
+   * Returns the user object of the requester's account.
+   *
+   * With a bot token this is the bot user; with an OAuth2 Bearer token it
+   * requires the `identify` scope (plus `email` to get `email`/`verified`).
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#get-current-user}
+   */
+  async fetchCurrentUser(): Promise<APIUser> {
+    return this.request<APIUser>('/users/@me');
+  }
+
+  /**
+   * Returns a user object for a given user id.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#get-user}
+   */
+  async fetchUser(userId: string): Promise<APIUser> {
+    return this.request<APIUser>(`/users/${userId}`);
+  }
+
+  /**
+   * Modifies the requester's account settings. All parameters are optional;
+   * changing `username` may randomize the discriminator.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#modify-current-user}
+   */
+  async editCurrentUser(options: EditCurrentUserOptions = {}): Promise<APIUser> {
+    return this.request<APIUser>('/users/@me', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(options.username !== undefined ? { username: options.username } : {}),
+        ...(options.avatar !== undefined ? { avatar: options.avatar } : {}),
+        ...(options.banner !== undefined ? { banner: options.banner } : {}),
+      }),
+    });
+  }
+
+  /**
+   * Lists partial guild objects the current user is a member of.
+   *
+   * Returns 200 guilds by default — the maximum for non-bot users — so no
+   * pagination is needed for normal apps. Large bot sharding must pass
+   * {@link GetCurrentUserGuildsOptions.shard} for every shard.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#get-current-user-guilds}
+   */
+  async listCurrentUserGuilds(
+    options: GetCurrentUserGuildsOptions = {},
+  ): Promise<APIPartialCurrentUserGuild[]> {
+    const { before, after, limit, shard, withCounts } = options;
+    const params = new URLSearchParams();
+    if (before !== undefined) params.set('before', before);
+    if (after !== undefined) params.set('after', after);
+    if (limit !== undefined) {
+      if (limit < 1 || limit > 200) {
+        throw new Error('[DiscordRestClient] guild list limit must be between 1 and 200');
+      }
+      params.set('limit', String(limit));
+    }
+    if (shard !== undefined) params.set('shard', String(shard));
+    if (withCounts) params.set('with_counts', 'true');
+
+    const query = params.size > 0 ? `?${params.toString()}` : '';
+    return this.request<APIPartialCurrentUserGuild[]>(`/users/@me/guilds${query}`);
+  }
+
+  /**
+   * Returns the current user's guild member object in a guild. For OAuth2 this
+   * requires the `guilds.members.read` scope.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#get-current-user-guild-member}
+   */
+  async fetchCurrentUserGuildMember(guildId: string): Promise<APIGuildMember> {
+    return this.request<APIGuildMember>(`/users/@me/guilds/${guildId}/member`);
+  }
+
+  /**
+   * Leaves a guild and resolves `void` (`204 No Content`).
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#leave-guild}
+   */
+  async leaveGuild(guildId: string): Promise<void> {
+    await this.request(`/users/@me/guilds/${guildId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Creates (or returns the already-existing) DM channel with a user.
+   *
+   * DMs should generally be initiated by a user action — opening many DMs
+   * quickly can get the app rate limited or blocked from opening new ones.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#create-dm}
+   */
+  async createDM(userId: string): Promise<APIChannel> {
+    const body: RESTPostAPICurrentUserCreateDMChannelJSONBody = { recipient_id: userId };
+    return this.request<APIChannel>('/users/@me/channels', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * Creates a group DM channel with users that granted the app the `gdm.join`
+   * scope. Limited to 10 active group DMs.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#create-group-dm}
+   */
+  async createGroupDM(options: CreateGroupDMOptions): Promise<APIChannel> {
+    return this.request<APIChannel>('/users/@me/channels', {
+      method: 'POST',
+      body: JSON.stringify({
+        access_tokens: [...options.accessTokens],
+        ...(options.nicks !== undefined ? { nicks: options.nicks } : {}),
+      }),
+    });
+  }
+
+  /**
+   * Lists connection objects attached to the current user's account. For
+   * OAuth2 this requires the `connections` scope.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#get-current-user-connections}
+   */
+  async listCurrentUserConnections(): Promise<APIConnection[]> {
+    return this.request<APIConnection[]>('/users/@me/connections');
+  }
+
+  /**
+   * Returns the application role connection this application has attached to
+   * the user. Requires an OAuth2 token with the `role_connections.write` scope.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#get-current-user-application-role-connection}
+   */
+  async fetchApplicationRoleConnection(
+    applicationId: string = this.options.applicationId,
+  ): Promise<APIApplicationRoleConnection> {
+    return this.request<APIApplicationRoleConnection>(
+      `/users/@me/applications/${applicationId}/role-connection`,
+    );
+  }
+
+  /**
+   * Updates and returns the application role connection this application has
+   * attached to the user. Requires `role_connections.write`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#update-current-user-application-role-connection}
+   */
+  async updateApplicationRoleConnection(
+    options: UpdateApplicationRoleConnectionOptions,
+    applicationId: string = this.options.applicationId,
+  ): Promise<APIApplicationRoleConnection> {
+    const body: RESTPutAPICurrentUserApplicationRoleConnectionJSONBody = {
+      ...(options.platformName !== undefined ? { platform_name: options.platformName } : {}),
+      ...(options.platformUsername !== undefined
+        ? { platform_username: options.platformUsername }
+        : {}),
+      ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
+    };
+    return this.request<APIApplicationRoleConnection>(
+      `/users/@me/applications/${applicationId}/role-connection`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  /**
+   * Deletes the application role connection this application has attached to
+   * the user and resolves `void` (`204 No Content`). Requires
+   * `role_connections.write`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/user#delete-current-user-application-role-connection}
+   */
+  async deleteApplicationRoleConnection(
+    applicationId: string = this.options.applicationId,
+  ): Promise<void> {
+    await this.request(`/users/@me/applications/${applicationId}/role-connection`, {
+      method: 'DELETE',
     });
   }
 

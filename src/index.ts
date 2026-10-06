@@ -179,6 +179,18 @@ export {
 } from "./voice/Voice.js";
 export type { APIVoiceState, APIVoiceRegion } from "./voice/Voice.js";
 export {
+	ConnectionVisibility,
+	UserFlags,
+	UserPremiumType,
+} from "./users/Users.js";
+export type {
+	APIPartialCurrentUserGuild,
+	CreateGroupDMOptions,
+	EditCurrentUserOptions,
+	GetCurrentUserGuildsOptions,
+	UpdateApplicationRoleConnectionOptions,
+} from "./users/Users.js";
+export {
 	DynamicFieldType,
 	APPLICATION_IDENTITY_LIMITS,
 	APPLICATION_IDENTITY_PROFILE_ERRORS,

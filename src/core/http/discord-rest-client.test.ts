@@ -230,3 +230,98 @@ test("current application endpoints hit /applications/@me", async () => {
 	});
 	assert.deepEqual(calls[2].body, { event_webhooks_status: 1 });
 });
+
+test("user endpoints hit /users/@me and /users/{user.id}", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.fetchCurrentUser();
+	assert.equal(calls[0].path, "/users/@me");
+	assert.equal(calls[0].method, undefined);
+
+	await rest.fetchUser("80351110224678912");
+	assert.equal(calls[1].path, "/users/80351110224678912");
+
+	await rest.editCurrentUser({ username: "Nelly", banner: null });
+	assert.equal(calls[2].method, "PATCH");
+	assert.deepEqual(calls[2].body, { username: "Nelly", banner: null });
+
+	// All parameters are optional; unset fields must be omitted.
+	await rest.editCurrentUser({});
+	assert.deepEqual(calls[3].body, {});
+
+	await rest.listCurrentUserGuilds({ limit: 50, withCounts: true, shard: 0 });
+	assert.equal(calls[4].path, "/users/@me/guilds?limit=50&shard=0&with_counts=true");
+
+	await rest.listCurrentUserGuilds({ after: "99", before: "100" });
+	assert.equal(calls[5].path, "/users/@me/guilds?before=100&after=99");
+
+	// Discord's default is returned when no params are given.
+	await rest.listCurrentUserGuilds();
+	assert.equal(calls[6].path, "/users/@me/guilds");
+
+	await rest.fetchCurrentUserGuildMember("guild-1");
+	assert.equal(calls[7].path, "/users/@me/guilds/guild-1/member");
+
+	await rest.leaveGuild("guild-1");
+	assert.equal(calls[8].path, "/users/@me/guilds/guild-1");
+	assert.equal(calls[8].method, "DELETE");
+});
+
+test("guild list limit is validated before any request is made", async () => {
+	const { rest } = makeRest();
+
+	await assert.rejects(
+		() => rest.listCurrentUserGuilds({ limit: 0 }),
+		/between 1 and 200/,
+	);
+	await assert.rejects(
+		() => rest.listCurrentUserGuilds({ limit: 201 }),
+		/between 1 and 200/,
+	);
+});
+
+test("DM, connections and role-connection endpoints", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.createDM("80351110224678912");
+	assert.equal(calls[0].path, "/users/@me/channels");
+	assert.equal(calls[0].method, "POST");
+	assert.deepEqual(calls[0].body, { recipient_id: "80351110224678912" });
+
+	await rest.createGroupDM({ accessTokens: ["tok-a", "tok-b"], nicks: { "1": "Nelly" } });
+	assert.equal(calls[1].method, "POST");
+	assert.deepEqual(calls[1].body, {
+		access_tokens: ["tok-a", "tok-b"],
+		nicks: { "1": "Nelly" },
+	});
+
+	// `nicks` is optional and omitted when unset.
+	await rest.createGroupDM({ accessTokens: ["tok-a"] });
+	assert.deepEqual(calls[2].body, { access_tokens: ["tok-a"] });
+
+	await rest.listCurrentUserConnections();
+	assert.equal(calls[3].path, "/users/@me/connections");
+
+	// The application id defaults to the client's configured one.
+	await rest.fetchApplicationRoleConnection();
+	assert.equal(calls[4].path, "/users/@me/applications/app-1/role-connection");
+
+	await rest.updateApplicationRoleConnection({
+		platformName: "GitHub",
+		metadata: { commits: "42" },
+	});
+	assert.equal(calls[5].method, "PUT");
+	assert.deepEqual(calls[5].body, {
+		platform_name: "GitHub",
+		metadata: { commits: "42" },
+	});
+
+	// Unset fields are omitted; an explicit application id overrides the default.
+	await rest.updateApplicationRoleConnection({ platformUsername: "nelly" }, "app-9");
+	assert.equal(calls[6].path, "/users/@me/applications/app-9/role-connection");
+	assert.deepEqual(calls[6].body, { platform_username: "nelly" });
+
+	await rest.deleteApplicationRoleConnection("app-9");
+	assert.equal(calls[7].path, "/users/@me/applications/app-9/role-connection");
+	assert.equal(calls[7].method, "DELETE");
+});
