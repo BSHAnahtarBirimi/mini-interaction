@@ -19,9 +19,10 @@ function makeRest() {
 		token: "bot-token",
 		applicationId: "app-1",
 		fetchImplementation: (async (_url: RequestInfo | URL, init?: RequestInit) => {
-			calls.push({
-				path: String(_url).replace(BASE, ""),
-				method: init?.method,
+		calls.push({
+			path: String(_url).replace(BASE, ""),
+			// fetch defaults to GET when no method is given — mirror that here.
+			method: init?.method ?? "GET",
 				body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
 				reason:
 					(init?.headers as Record<string, string> | undefined)?.["X-Audit-Log-Reason"],
@@ -148,7 +149,7 @@ test("voice state and region endpoints", async () => {
 
 	await rest.listVoiceRegions();
 	assert.equal(calls[0].path, "/voice/regions");
-	assert.equal(calls[0].method, undefined);
+	assert.equal(calls[0].method, "GET");
 
 	await rest.getCurrentUserVoiceState("g");
 	assert.equal(calls[1].path, "/guilds/g/voice-states/@me");
@@ -206,7 +207,7 @@ test("current application endpoints hit /applications/@me", async () => {
 
 	await rest.getCurrentApplication();
 	assert.equal(calls[0].path, "/applications/@me");
-	assert.equal(calls[0].method, undefined);
+	assert.equal(calls[0].method, "GET");
 
 	await rest.editCurrentApplication({
 		eventWebhooksUrl: "https://example.com/webhook-events",
@@ -236,7 +237,7 @@ test("user endpoints hit /users/@me and /users/{user.id}", async () => {
 
 	await rest.fetchCurrentUser();
 	assert.equal(calls[0].path, "/users/@me");
-	assert.equal(calls[0].method, undefined);
+	assert.equal(calls[0].method, "GET");
 
 	await rest.fetchUser("80351110224678912");
 	assert.equal(calls[1].path, "/users/80351110224678912");
@@ -324,4 +325,88 @@ test("DM, connections and role-connection endpoints", async () => {
 	await rest.deleteApplicationRoleConnection("app-9");
 	assert.equal(calls[7].path, "/users/@me/applications/app-9/role-connection");
 	assert.equal(calls[7].method, "DELETE");
+});
+
+test("sticker read endpoints hit the documented routes", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.fetchSticker("749054660769218631");
+	assert.equal(calls[0].path, "/stickers/749054660769218631");
+	assert.equal(calls[0].method, "GET");
+
+	await rest.listStickerPacks();
+	assert.equal(calls[1].path, "/sticker-packs");
+	assert.equal(calls[1].method, "GET");
+
+	await rest.fetchStickerPack("847199849233514549");
+	assert.equal(calls[2].path, "/sticker-packs/847199849233514549");
+
+	await rest.listGuildStickers("g1");
+	assert.equal(calls[3].path, "/guilds/g1/stickers");
+
+	await rest.fetchGuildSticker("g1", "749054660769218631");
+	assert.equal(calls[4].path, "/guilds/g1/stickers/749054660769218631");
+});
+
+test("createGuildSticker sends multipart form-data with the audit reason", async () => {
+	let capturedUrl = "";
+	let capturedBody: BodyInit | null | undefined;
+	let capturedHeaders: HeadersInit | undefined;
+
+	const fetchImpl: typeof fetch = (async (input, init) => {
+		capturedUrl = String(input);
+		capturedBody = init?.body;
+		capturedHeaders = init?.headers;
+		return new Response(JSON.stringify({ id: "s1", name: "Wave" }), { status: 200 });
+	}) as typeof fetch;
+
+	const rest = new DiscordRestClient({
+		token: "bot-token",
+		applicationId: "app-1",
+		fetchImplementation: fetchImpl,
+	});
+
+	await rest.createGuildSticker(
+		"g1",
+		{ name: "Wave", description: "Wumpus waves hello", tags: "wumpus, hello, wave" },
+		{ name: "wave.png", data: new Uint8Array([1, 2, 3]), contentType: "image/png" },
+		"because reasons",
+	);
+
+	assert.match(capturedUrl, /\/guilds\/g1\/stickers$/);
+	assert.ok(capturedBody instanceof FormData, "body must be FormData");
+
+	const payload = capturedBody.get("payload_json");
+	assert.equal(typeof payload, "string");
+	assert.match(String(payload), /Wumpus waves hello/);
+	assert.match(String(payload), /wumpus, hello, wave/);
+
+	const file = capturedBody.get("file");
+	assert.ok(file instanceof Blob, "file part must be a Blob");
+	assert.ok(file.size > 0, "file part must carry the uploaded bytes");
+
+	const headers = capturedHeaders as Record<string, string>;
+	assert.equal(headers["X-Audit-Log-Reason"], "because reasons");
+	// Multipart bodies must NOT carry a JSON content type.
+	assert.equal(headers["Content-Type"], undefined);
+});
+
+test("modifyGuildSticker sends a JSON body; deleteGuildSticker resolves 204", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.modifyGuildSticker("g1", "s1", { description: null }, "renamed");
+	assert.equal(calls[0].path, "/guilds/g1/stickers/s1");
+	assert.equal(calls[0].method, "PATCH");
+	assert.deepEqual(calls[0].body, { description: null });
+	assert.equal(calls[0].reason, "renamed");
+
+	// Omitted fields are absent from the body.
+	await rest.modifyGuildSticker("g1", "s1", { tags: "new, tags" });
+	assert.deepEqual(calls[1].body, { tags: "new, tags" });
+	assert.equal(calls[1].reason, undefined);
+
+	await rest.deleteGuildSticker("g1", "s1", "cleanup");
+	assert.equal(calls[2].path, "/guilds/g1/stickers/s1");
+	assert.equal(calls[2].method, "DELETE");
+	assert.equal(calls[2].reason, "cleanup");
 });

@@ -14,8 +14,10 @@ Mini Interaction is a high-performance framework designed for building Discord H
 - **🧩 Fluent Builders**: Construct complex messages and components with a premium API.
 - **🔐 Integrated OAuth**: Simple handlers for Discord OAuth2 flows, plus an `OAuth2Builder` with a typed, documented scope registry.
 - **🔗 Linked Channels**: Bind lobbies to guild text channels, relay messages both ways, and mint server invites.
-- **🎮 Game Stats Widgets**: Push player stats onto Discord profiles via the Application Identity Profile API. - **🔊 Voice States & Regions**: Read voice membership, drive stage-channel speak state, and pin a channel's `rtc_region`.
- - **👥 Users**: Fetch and edit users, list the current user's guilds, open DMs, read connections, and manage application role connections.
+- **🎮 Game Stats Widgets**: Push player stats onto Discord profiles via the Application Identity Profile API.
+- **🔊 Voice States & Regions**: Read voice membership, drive stage-channel speak state, and pin a channel's `rtc_region`.
+- **👥 Users**: Fetch and edit users, list the current user's guilds, open DMs, read connections, and manage application role connections.
+- **🎭 Stickers**: Read stickers, sticker packs and guild stickers, and create, modify, or delete guild stickers with audit reasons.
 - **📨 Webhook Events**: Typed, signature-verified HTTP events with an ack-correct endpoint.
 - **🗃️ Mini Database**: Lightweight, document-based storage integration.
 
@@ -440,6 +442,58 @@ Notes:
   can target another application id explicitly; they need an OAuth2 token with
   the `role_connections.write` scope when acting for a user. The connections
   and guild-member routes act on `@me` only.
+
+---
+
+## 🎭 Stickers
+
+Stickers are the small images that can be sent in messages. The full Sticker
+Resource is covered: reading stickers and packs, listing a guild's stickers,
+and the guild-sticker write endpoints.
+
+```ts
+import { DiscordRestClient, StickerType, StickerFormatType } from '@minesa-org/mini-interaction';
+
+const rest = new DiscordRestClient({
+  token: process.env.DISCORD_TOKEN!,
+  applicationId: process.env.DISCORD_APPLICATION_ID!,
+});
+
+// Reads: any sticker by id, the standard packs, and one pack.
+const sticker = await rest.fetchSticker('749054660769218631');
+const packs = await rest.listStickerPacks(); // { sticker_packs: [...] }
+const pack = await rest.fetchStickerPack(packs.sticker_packs[0].id);
+
+// Guild stickers — the `user` field appears with CREATE_GUILD_EXPRESSIONS
+// or MANAGE_GUILD_EXPRESSIONS.
+const guildStickers = await rest.listGuildStickers(guildId);
+const mine = await rest.fetchGuildSticker(guildId, guildStickers[0].id);
+
+// Create: multipart upload (PNG, APNG, GIF, or Lottie JSON — max 512 KiB).
+const created = await rest.createGuildSticker(
+  guildId,
+  { name: 'Wave', description: 'Wumpus waves hello', tags: 'wumpus, hello, wave' },
+  { name: 'wave.png', data: pngBytes, contentType: 'image/png' },
+  'optional audit reason',
+);
+
+// Modify (all fields optional) and delete (204 No Content).
+await rest.modifyGuildSticker(guildId, created.id, { description: null }, 'cleanup');
+await rest.deleteGuildSticker(guildId, created.id);
+```
+
+Notes:
+
+- **Types & formats**: `StickerType.Standard = 1` / `StickerType.Guild = 2`;
+  `StickerFormatType` is `PNG = 1`, `APNG = 2`, `Lottie = 3`, `GIF = 4`. The
+  `APISticker`, `APIStickerItem` and `APIStickerPack` shapes match the docs.
+- **Upload limits**: animated stickers are capped at 5 seconds and 320×320;
+  Lottie stickers require the `VERIFIED` and/or `PARTNERED` guild feature.
+  Every guild has five free sticker slots, plus more per Boost level.
+- **Audit reasons**: create, modify and delete accept an `X-Audit-Log-Reason`
+  as the trailing argument. Create needs `CREATE_GUILD_EXPRESSIONS`; modify
+  and delete need `MANAGE_GUILD_EXPRESSIONS` (or `CREATE_GUILD_EXPRESSIONS`
+  for stickers you uploaded yourself).
 
 ---
 

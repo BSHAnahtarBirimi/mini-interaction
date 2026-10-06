@@ -13,10 +13,14 @@ import type {
   APIRole,
   APISKU,
   APISticker,
+  APIStickerPack,
   APIUser,
   APIWebhook,
   ApplicationCommandPermissionType,
+  RESTGetStickerPacksResult,
+  RESTPatchAPIGuildStickerJSONBody,
   RESTPostAPICurrentUserCreateDMChannelJSONBody,
+  RESTPostAPIGuildStickerFormDataBody,
   RESTPutAPIApplicationCommandPermissionsJSONBody,
   RESTPutAPIApplicationRoleConnectionMetadataJSONBody,
   RESTPutAPIApplicationRoleConnectionMetadataResult,
@@ -54,6 +58,13 @@ import type {
   GetCurrentUserGuildsOptions,
   UpdateApplicationRoleConnectionOptions,
 } from '../../users/Users.js';
+import type {
+  CreateGuildStickerOptions,
+  ModifyGuildStickerOptions,
+  StickerPacksListResult,
+} from '../../stickers/Stickers.js';
+import { toBlob, type DiscordMessageFile } from '../../core/messages/message-payloads.js';
+
 import type {
   APIVoiceRegion,
   APIVoiceState,
@@ -922,7 +933,7 @@ export class DiscordRestClient {
     });
   }
 
-  // ---- Emoji & stickers (v0.8) ----
+  // ---- Emoji (v0.8) ----
 
   async listGuildEmojis(guildId: string): Promise<APIEmoji[]> {
     return this.request<APIEmoji[]>(`/guilds/${guildId}/emojis`);
@@ -967,21 +978,6 @@ export class DiscordRestClient {
 
   async deleteGuildEmoji(guildId: string, emojiId: string, reason?: string): Promise<void> {
     await this.request(`/guilds/${guildId}/emojis/${emojiId}`, {
-      method: 'DELETE',
-      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
-    });
-  }
-
-  async listGuildStickers(guildId: string): Promise<APISticker[]> {
-    return this.request<APISticker[]>(`/guilds/${guildId}/stickers`);
-  }
-
-  async fetchSticker(stickerId: string): Promise<APISticker> {
-    return this.request<APISticker>(`/stickers/${stickerId}`);
-  }
-
-  async deleteGuildSticker(guildId: string, stickerId: string, reason?: string): Promise<void> {
-    await this.request(`/guilds/${guildId}/stickers/${stickerId}`, {
       method: 'DELETE',
       headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
     });
@@ -1754,6 +1750,111 @@ export class DiscordRestClient {
   }
 
   /**
+   * Returns a sticker by id.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/sticker#get-sticker}
+   */
+  async fetchSticker(stickerId: string): Promise<APISticker> {
+    return this.request<APISticker>(`/stickers/${stickerId}`);
+  }
+
+  /**
+   * Returns a list of the available sticker packs.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/sticker#list-sticker-packs}
+   */
+  async listStickerPacks(): Promise<StickerPacksListResult> {
+    return this.request<StickerPacksListResult>('/sticker-packs');
+  }
+
+  /**
+   * Returns a sticker pack by id.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/sticker#get-sticker-pack}
+   */
+  async fetchStickerPack(packId: string): Promise<APIStickerPack> {
+    return this.request<APIStickerPack>(`/sticker-packs/${packId}`);
+  }
+
+  /**
+   * Returns the guild's stickers. Includes the `user` field when the bot has the
+   * `CREATE_GUILD_EXPRESSIONS` or `MANAGE_GUILD_EXPRESSIONS` permission.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/sticker#list-guild-stickers}
+   */
+  async listGuildStickers(guildId: string): Promise<APISticker[]> {
+    return this.request<APISticker[]>(`/guilds/${guildId}/stickers`);
+  }
+
+  /**
+   * Returns a guild sticker by guild and sticker ids. Includes the `user` field when
+   * the bot has the `CREATE_GUILD_EXPRESSIONS` or `MANAGE_GUILD_EXPRESSIONS` permission.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/sticker#get-guild-sticker}
+   */
+  async fetchGuildSticker(guildId: string, stickerId: string): Promise<APISticker> {
+    return this.request<APISticker>(`/guilds/${guildId}/stickers/${stickerId}`);
+  }
+
+  /**
+   * Creates a guild sticker. The request body is a `multipart/form-data` upload; the
+   * sticker file must be a PNG, APNG, GIF, or Lottie JSON file (max 512 KiB). Returns
+   * the created sticker. Fires a `GUILD_STICKERS_UPDATE` Gateway event.
+   *
+   * Requires the `CREATE_GUILD_EXPRESSIONS` permission.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/sticker#create-guild-sticker}
+   */
+  async createGuildSticker(
+    guildId: string,
+    options: CreateGuildStickerOptions,
+    file: DiscordMessageFile,
+    reason?: string,
+  ): Promise<APISticker> {
+    const formData = new FormData();
+    formData.set('payload_json', JSON.stringify(options));
+    formData.append('file', toBlob(file), file.name);
+
+    return this.request<APISticker>('/guilds/' + guildId + '/stickers', {
+      method: 'POST',
+      body: formData,
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /**
+   * Modifies a guild sticker. All fields are optional; omit a field to leave it
+   * unchanged. Fires a `GUILD_STICKERS_UPDATE` Gateway event.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/sticker#modify-guild-sticker}
+   */
+  async modifyGuildSticker(
+    guildId: string,
+    stickerId: string,
+    options: ModifyGuildStickerOptions,
+    reason?: string,
+  ): Promise<APISticker> {
+    return this.request<APISticker>('/guilds/' + guildId + '/stickers/' + stickerId, {
+      method: 'PATCH',
+      body: JSON.stringify(options),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /**
+   * Deletes a guild sticker. Returns `204 No Content`. Fires a
+   * `GUILD_STICKERS_UPDATE` Gateway event.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/sticker#delete-guild-sticker}
+   */
+  async deleteGuildSticker(guildId: string, stickerId: string, reason?: string): Promise<void> {
+    await this.request('/guilds/' + guildId + '/stickers/' + stickerId, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /**
    * Creates (or returns the already-existing) DM channel with a user.
    *
    * DMs should generally be initiated by a user action — opening many DMs
@@ -1773,6 +1874,7 @@ export class DiscordRestClient {
    * Creates a group DM channel with users that granted the app the `gdm.join`
    * scope. Limited to 10 active group DMs.
    *
+
    * @see {@link https://docs.discord.com/developers/resources/user#create-group-dm}
    */
   async createGroupDM(options: CreateGroupDMOptions): Promise<APIChannel> {
