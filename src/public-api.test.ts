@@ -55,6 +55,11 @@ import {
 	type CreateStageInstanceOptions,
 	type ModifyStageInstanceOptions,
 	type StageInstanceResult,
+	type APISoundboardSound,
+	type GuildSoundboardSoundsResult,
+	type SendSoundboardSoundOptions,
+	type CreateGuildSoundboardSoundOptions,
+	type ModifyGuildSoundboardSoundOptions,
 } from "./index.js";
 
 test("the package barrel re-exports the Game Stats surface", () => {
@@ -254,6 +259,62 @@ test("the package barrel re-exports the Stage Instance surface", () => {
 		"fetchStageInstance",
 		"modifyStageInstance",
 		"deleteStageInstance",
+	]) {
+		assert.equal(typeof (DiscordRestClient.prototype as unknown as Record<string, unknown>)[method], "function", method);
+	}
+});
+
+test("the package barrel re-exports the Soundboard surface", () => {
+	// The default sound example from the docs type-checks as APISoundboardSound.
+	const defaultSound: APISoundboardSound = {
+		name: "quack",
+		sound_id: "1",
+		volume: 1.0,
+		emoji_id: null,
+		emoji_name: "🦆",
+		available: true,
+	};
+	assert.equal(defaultSound.emoji_name, "🦆");
+
+	// The guild sound example from the docs.
+	const guildSound: APISoundboardSound = {
+		name: "Yay",
+		sound_id: "1106714396018884649",
+		volume: 1,
+		emoji_id: "989193655938064464",
+		emoji_name: null,
+		guild_id: "613425648685547541",
+		available: true,
+	};
+	assert.equal(guildSound.emoji_id, "989193655938064464");
+
+	// Guild list result wraps `items`.
+	const list: GuildSoundboardSoundsResult = { items: [defaultSound] };
+	assert.equal(list.items.length, 1);
+
+	// Send uses sound_id (+ optional source_guild_id).
+	const send: SendSoundboardSoundOptions = { sound_id: "1", source_guild_id: "g2" };
+	assert.equal(send.source_guild_id, "g2");
+
+	// Create plus modify option types accept the base64 data uri and nullable fields.
+	const create: CreateGuildSoundboardSoundOptions = {
+		name: "Yay",
+		sound: "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAQAAACQA",
+		volume: 0.5,
+		emoji_id: "989193655938064464",
+	};
+	const modify: ModifyGuildSoundboardSoundOptions = { volume: null, emoji_name: "🎉" };
+	assert.equal(modify.volume, null);
+
+	// The seven soundboard routes exist on the client.
+	for (const method of [
+		"sendSoundboardSound",
+		"fetchDefaultSoundboardSounds",
+		"listGuildSoundboardSounds",
+		"fetchGuildSoundboardSound",
+		"createGuildSoundboardSound",
+		"modifyGuildSoundboardSound",
+		"deleteGuildSoundboardSound",
 	]) {
 		assert.equal(typeof (DiscordRestClient.prototype as unknown as Record<string, unknown>)[method], "function", method);
 	}

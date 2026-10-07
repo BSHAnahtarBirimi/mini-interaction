@@ -12,6 +12,7 @@ import type {
   APIMessage,
   APIRole,
   APISKU,
+  APISoundboardSound,
   APIStageInstance,
   APISticker,
   APIStickerPack,
@@ -23,6 +24,7 @@ import type {
   RESTPostAPICurrentUserCreateDMChannelJSONBody,
   RESTPostAPIGuildStickerFormDataBody,
   RESTPutAPIApplicationCommandPermissionsJSONBody,
+  RESTGetAPIGuildSoundboardSoundsResult,
   RESTPutAPIApplicationRoleConnectionMetadataJSONBody,
   RESTPutAPIApplicationRoleConnectionMetadataResult,
   RESTPutAPICurrentUserApplicationRoleConnectionJSONBody,
@@ -68,6 +70,12 @@ import type {
   CreateStageInstanceOptions,
   ModifyStageInstanceOptions,
 } from '../../stageInstances/StageInstances.js';
+import type {
+  GuildSoundboardSoundsResult,
+  SendSoundboardSoundOptions,
+  CreateGuildSoundboardSoundOptions,
+  ModifyGuildSoundboardSoundOptions,
+} from '../../soundboard/Soundboard.js';
 import { toBlob, type DiscordMessageFile } from '../../core/messages/message-payloads.js';
 
 import type {
@@ -1860,6 +1868,34 @@ export class DiscordRestClient {
   }
 
   /**
+   * Sends a soundboard sound into a voice channel the user is connected to.
+   * Fires a `VOICE_CHANNEL_EFFECT_SEND` Gateway event.
+   *
+   * Requires the user to be connected to the voice channel (a voice state without
+   * `deaf`, `self_deaf`, `mute`, or `suppress`) and to have the `SPEAK` and
+   * `USE_SOUNDBOARD` permissions. Use `source_guild_id` to play a sound from a
+   * different server, which also requires `USE_EXTERNAL_SOUNDS`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/soundboard#send-soundboard-sound}
+   */
+  async sendSoundboardSound(
+    channelId: string,
+    options: SendSoundboardSoundOptions,
+    reason?: string,
+  ): Promise<APISoundboardSound> {
+    return this.request<APISoundboardSound>(
+      `/channels/${channelId}/send-soundboard-sound`,
+      {
+        method: 'POST',
+        body: options.source_guild_id !== undefined
+          ? `{"sound_id":"${options.sound_id}","source_guild_id":"${options.source_guild_id}"}`
+          : `{"sound_id":"${options.sound_id}"}`,
+        headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+      },
+    );
+  }
+
+  /**
    * Creates a Stage instance associated to a Stage channel, marking the channel
    * *live*. Returns the Stage instance. Fires a `STAGE_INSTANCE_CREATE` Gateway
    * event.
@@ -1924,6 +1960,119 @@ export class DiscordRestClient {
    */
   async deleteStageInstance(channelId: string, reason?: string): Promise<void> {
     await this.request(`/stage-instances/${channelId}`, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /**
+   * Returns the default soundboard sounds available to all users.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/soundboard#list-default-soundboard-sounds}
+   */
+  async fetchDefaultSoundboardSounds(): Promise<APISoundboardSound[]> {
+    return this.request<APISoundboardSound[]>('/soundboard-default-sounds');
+  }
+
+  /**
+   * Returns the guild's soundboard sounds. Includes the `user` field when the bot
+   * has `CREATE_GUILD_EXPRESSIONS` or `MANAGE_GUILD_EXPRESSIONS`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/soundboard#list-guild-soundboard-sounds}
+   */
+  async listGuildSoundboardSounds(
+    guildId: string,
+  ): Promise<GuildSoundboardSoundsResult> {
+    return this.request<GuildSoundboardSoundsResult>(
+      `/guilds/${guildId}/soundboard-sounds`,
+    );
+  }
+
+  /**
+   * Returns a guild soundboard sound by guild and sound ids. Includes the `user`
+   * field when the bot has `CREATE_GUILD_EXPRESSIONS` or `MANAGE_GUILD_EXPRESSIONS`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/soundboard#get-guild-soundboard-sound}
+   */
+  async fetchGuildSoundboardSound(
+    guildId: string,
+    soundId: string,
+  ): Promise<APISoundboardSound> {
+    return this.request<APISoundboardSound>(
+      `/guilds/${guildId}/soundboard-sounds/${soundId}`,
+    );
+  }
+
+  /**
+   * Creates a guild soundboard sound. The sound data is a base64-encoded MP3 or
+   * Ogg data URI (`sound`). Max file size 512 KiB and max duration 5.2 seconds.
+   * Returns the created sound. Fires a `GUILD_SOUNDBOARD_SOUND_CREATE` Gateway
+   * event.
+   *
+   * Requires the `CREATE_GUILD_EXPRESSIONS` permission. Supports the
+   * `X-Audit-Log-Reason` header via `reason`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/soundboard#create-guild-soundboard-sound}
+   */
+  async createGuildSoundboardSound(
+    guildId: string,
+    options: CreateGuildSoundboardSoundOptions,
+    reason?: string,
+  ): Promise<APISoundboardSound> {
+    return this.request<APISoundboardSound>(
+      `/guilds/${guildId}/soundboard-sounds`,
+      {
+        method: 'POST',
+        body: JSON.stringify(options),
+        headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+      },
+    );
+  }
+
+  /**
+   * Modifies a guild soundboard sound. All fields are optional; omit a field to
+   * leave it unchanged. Any optional field may be explicitly set to `null` to
+   * clear it. Returns the updated sound. Fires a
+   * `GUILD_SOUNDBOARD_SOUND_UPDATE` Gateway event.
+   *
+   * For sounds you created, requires `CREATE_GUILD_EXPRESSIONS` or
+   * `MANAGE_GUILD_EXPRESSIONS`; for other sounds, `MANAGE_GUILD_EXPRESSIONS`.
+   * Supports the `X-Audit-Log-Reason` header via `reason`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/soundboard#modify-guild-soundboard-sound}
+   */
+  async modifyGuildSoundboardSound(
+    guildId: string,
+    soundId: string,
+    options: ModifyGuildSoundboardSoundOptions,
+    reason?: string,
+  ): Promise<APISoundboardSound> {
+    return this.request<APISoundboardSound>(
+      `/guilds/${guildId}/soundboard-sounds/${soundId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(options),
+        headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+      },
+    );
+  }
+
+  /**
+   * Deletes a guild soundboard sound. Returns `204 No Content`. Fires a
+   * `GUILD_SOUNDBOARD_SOUND_DELETE` Gateway event.
+   *
+   * For sounds you created, requires `CREATE_GUILD_EXPRESSIONS` or
+   * `MANAGE_GUILD_EXPRESSIONS`; for other sounds, `MANAGE_GUILD_EXPRESSIONS`.
+   * Supports the `X-Audit-Log-Reason` header via `reason`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/soundboard#delete-guild-soundboard-sound}
+   */
+  async deleteGuildSoundboardSound(
+    guildId: string,
+    soundId: string,
+    reason?: string,
+  ): Promise<void> {
+    await this.request(`/guilds/${guildId}/soundboard-sounds/${soundId}`, {
       method: 'DELETE',
       headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
     });

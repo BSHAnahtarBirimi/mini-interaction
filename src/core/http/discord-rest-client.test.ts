@@ -472,3 +472,64 @@ test("modifyStageInstance sends a JSON body; deleteStageInstance resolves 204", 
 	assert.equal(calls[2].method, "DELETE");
 	assert.equal(calls[2].reason, "done");
 });
+
+test("soundboard routes: send + default + guild list/sound CRUD", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.sendSoundboardSound("ch", { sound_id: "1" });
+	assert.equal(calls[0].path, "/channels/ch/send-soundboard-sound");
+	assert.equal(calls[0].method, "POST");
+	assert.deepEqual(calls[0].body, { sound_id: "1" });
+
+	await rest.sendSoundboardSound("ch", { sound_id: "1", source_guild_id: "g2" });
+	assert.equal(calls[1].path, "/channels/ch/send-soundboard-sound");
+	assert.deepEqual(calls[1].body, { sound_id: "1", source_guild_id: "g2" });
+
+	await rest.fetchDefaultSoundboardSounds();
+	assert.equal(calls[2].path, "/soundboard-default-sounds");
+	assert.equal(calls[2].method, "GET");
+
+	await rest.listGuildSoundboardSounds("g1");
+	assert.equal(calls[3].path, "/guilds/g1/soundboard-sounds");
+	assert.equal(calls[3].method, "GET");
+
+	await rest.fetchGuildSoundboardSound("g1", "1106714396018884649");
+	assert.equal(calls[4].path, "/guilds/g1/soundboard-sounds/1106714396018884649");
+	assert.equal(calls[4].method, "GET");
+
+	await rest.createGuildSoundboardSound(
+		"g1",
+		{
+			name: "Yay",
+			sound: "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAQAAACQA",
+			volume: 0.5,
+			emoji_id: "989193655938064464",
+		},
+		"add a yay sound",
+	);
+	assert.equal(calls[5].path, "/guilds/g1/soundboard-sounds");
+	assert.equal(calls[5].method, "POST");
+	assert.deepEqual(calls[5].body, {
+		name: "Yay",
+		sound: "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAQAAACQA",
+		volume: 0.5,
+		emoji_id: "989193655938064464",
+	});
+	assert.equal(calls[5].reason, "add a yay sound");
+
+	await rest.modifyGuildSoundboardSound("g1", "1106714396018884649", { volume: null }, "renaming");
+	assert.equal(calls[6].path, "/guilds/g1/soundboard-sounds/1106714396018884649");
+	assert.equal(calls[6].method, "PATCH");
+	assert.deepEqual(calls[6].body, { volume: null });
+	assert.equal(calls[6].reason, "renaming");
+
+	// Omitted fields are absent; no reason means no header.
+	await rest.modifyGuildSoundboardSound("g1", "1106714396018884649", { name: "Updated" });
+	assert.deepEqual(calls[7].body, { name: "Updated" });
+	assert.equal(calls[7].reason, undefined);
+
+	await rest.deleteGuildSoundboardSound("g1", "1106714396018884649", "cleanup");
+	assert.equal(calls[8].path, "/guilds/g1/soundboard-sounds/1106714396018884649");
+	assert.equal(calls[8].method, "DELETE");
+	assert.equal(calls[8].reason, "cleanup");
+});
