@@ -19,6 +19,7 @@ Mini Interaction is a high-performance framework designed for building Discord H
 - **👥 Users**: Fetch and edit users, list the current user's guilds, open DMs, read connections, and manage application role connections.
 - **🎭 Stickers**: Read stickers, sticker packs and guild stickers, and create, modify, or delete guild stickers with audit reasons.
 - **🎙️ Stage Instances**: Go live on Stage channels — create, read, modify, and close Stage instances with audit reasons.
+- **🔊 Soundboard**: Play guild and default sounds into a voice channel, and create, read, modify, or delete guild soundboard sounds with audit reasons.
 - **📨 Webhook Events**: Typed, signature-verified HTTP events with an ack-correct endpoint.
 - **🗃️ Mini Database**: Lightweight, document-based storage integration.
 
@@ -632,6 +633,72 @@ with exponential backoff for up to 10 minutes, and stops sending events if you
 fail too often. On non-Fetch servers,
 `endpoint.handle({ body, signature, timestamp })` returns just
 `{ status, body }` for you to apply yourself.
+
+---
+
+## 🔊 Soundboard
+
+Soundboard sounds play in voice channels (firing a `VOICE_CHANNEL_EFFECT_SEND`
+Gateway event for anyone else connected) and can be shared across guilds: every
+user has access to the default sounds, and guild-created sounds are usable in
+their home guild and by Nitro subscribers everywhere.
+
+```ts
+import {
+  DiscordRestClient,
+  APISoundboardSound,
+  GuildSoundboardSoundsResult,
+} from '@minesa-org/mini-interaction';
+
+const rest = new DiscordRestClient({
+  token: process.env.DISCORD_TOKEN!,
+  applicationId: process.env.DISCORD_APPLICATION_ID!,
+});
+
+// Default sounds available to all users.
+const defaults = await rest.fetchDefaultSoundboardSounds(); // APISoundboardSound[]
+
+// A guild's sounds — includes the `user` field with
+// CREATE_GUILD_EXPRESSIONS / MANAGE_GUILD_EXPRESSIONS.
+const guildSounds = await rest.listGuildSoundboardSounds(guildId);
+const { items } = guildSounds; // { items: APISoundboardSound[] }
+const sound = await rest.fetchGuildSoundboardSound(guildId, items[0].sound_id);
+
+// Send a sound into a voice channel the user is connected to (requires SPEAK +
+// USE_SOUNDBOARD, and USE_EXTERNAL_SOUNDS for cross-server sounds).
+await rest.sendSoundboardSound(channelId, {
+  sound_id: sound.sound_id,
+  source_guild_id: sound.guild_id, // only when playing a sound from another server
+});
+
+// Create a guild sound from a base64 MP3/Ogg data URI (max 512 KiB, max 5.2s).
+const created = await rest.createGuildSoundboardSound(
+  guildId,
+  {
+    name: 'Yay',
+    sound: 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAQAAACQA',
+    volume: 0.5,
+    emoji_id: '989193655938064464',
+  },
+  'add a yay sound',
+);
+
+// Modify (all fields optional; nullable fields may be nulled) and delete (204).
+await rest.modifyGuildSoundboardSound(created.guild_id, created.sound_id, { volume: null }, 'mute it');
+await rest.deleteGuildSoundboardSound(created.guild_id, created.sound_id);
+```
+
+Notes:
+
+- **Sound object**: `{ name, sound_id, volume 0–1, emoji_id?, emoji_name?, guild_id?, available, user? }`.
+- **Guild list response**: `{ items: APISoundboardSound[] }` — not a plain array.
+- **Send** posts to `/channels/{channel.id}/send-soundboard-sound`; the JSON body
+  is `{ sound_id, source_guild_id? }`. `source_guild_id` is only required when
+  playing a sound from a different server.
+- **Create**: the `sound` field is a base64 data URI (MP3 or Ogg). Max file size
+  512 KiB and max duration 5.2 seconds.
+- **Audit reasons**: send, create, modify and delete accept an
+  `X-Audit-Log-Reason` as the trailing argument.
 
 ---
 

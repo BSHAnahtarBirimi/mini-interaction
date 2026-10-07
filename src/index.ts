@@ -211,6 +211,13 @@ export type {
 	ModifyStageInstanceOptions,
 	StageInstanceResult,
 } from "./stageInstances/StageInstances.js";
+export type {
+	APISoundboardSound,
+	GuildSoundboardSoundsResult,
+	SendSoundboardSoundOptions,
+	CreateGuildSoundboardSoundOptions,
+	ModifyGuildSoundboardSoundOptions,
+} from "./soundboard/Soundboard.js";
 export {
 	DynamicFieldType,
 	APPLICATION_IDENTITY_LIMITS,
