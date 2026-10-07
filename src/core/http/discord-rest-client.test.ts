@@ -410,3 +410,65 @@ test("modifyGuildSticker sends a JSON body; deleteGuildSticker resolves 204", as
 	assert.equal(calls[2].method, "DELETE");
 	assert.equal(calls[2].reason, "cleanup");
 });
+
+test("createStageInstance posts to /stage-instances with the audit reason", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.createStageInstance({
+		channel_id: "733488538393510049",
+		topic: "Testing Testing, 123",
+	}, "start the show");
+	assert.equal(calls[0].path, "/stage-instances");
+	assert.equal(calls[0].method, "POST");
+	assert.deepEqual(calls[0].body, {
+		channel_id: "733488538393510049",
+		topic: "Testing Testing, 123",
+	});
+	assert.equal(calls[0].reason, "start the show");
+
+	// Optional params are forwarded when set…
+	await rest.createStageInstance({
+		channel_id: "733488538393510049",
+		topic: "Office Hours",
+		privacy_level: 2,
+		send_start_notification: true,
+		guild_scheduled_event_id: "947656305244532806",
+	});
+	assert.deepEqual(calls[1].body, {
+		channel_id: "733488538393510049",
+		topic: "Office Hours",
+		privacy_level: 2,
+		send_start_notification: true,
+		guild_scheduled_event_id: "947656305244532806",
+	});
+	assert.equal(calls[1].reason, undefined);
+});
+
+test("fetchStageInstance gets by channel id", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.fetchStageInstance("733488538393510049");
+	assert.equal(calls[0].path, "/stage-instances/733488538393510049");
+	assert.equal(calls[0].method, "GET");
+	assert.equal(calls[0].body, undefined);
+});
+
+test("modifyStageInstance sends a JSON body; deleteStageInstance resolves 204", async () => {
+	const { rest, calls } = makeRest();
+
+	await rest.modifyStageInstance("733488538393510049", { topic: "New topic" }, "renamed");
+	assert.equal(calls[0].path, "/stage-instances/733488538393510049");
+	assert.equal(calls[0].method, "PATCH");
+	assert.deepEqual(calls[0].body, { topic: "New topic" });
+	assert.equal(calls[0].reason, "renamed");
+
+	// Omitted fields are absent from the body; no reason means no header.
+	await rest.modifyStageInstance("733488538393510049", { privacy_level: 2 });
+	assert.deepEqual(calls[1].body, { privacy_level: 2 });
+	assert.equal(calls[1].reason, undefined);
+
+	await rest.deleteStageInstance("733488538393510049", "done");
+	assert.equal(calls[2].path, "/stage-instances/733488538393510049");
+	assert.equal(calls[2].method, "DELETE");
+	assert.equal(calls[2].reason, "done");
+});

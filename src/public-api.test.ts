@@ -50,6 +50,11 @@ import {
 	type CreateGuildStickerOptions,
 	type ModifyGuildStickerOptions,
 	type StickerPacksListResult,
+	StageInstancePrivacyLevel,
+	type APIStageInstance,
+	type CreateStageInstanceOptions,
+	type ModifyStageInstanceOptions,
+	type StageInstanceResult,
 } from "./index.js";
 
 test("the package barrel re-exports the Game Stats surface", () => {
@@ -214,6 +219,41 @@ test("the package barrel re-exports the Sticker Resource surface", () => {
 		"createGuildSticker",
 		"modifyGuildSticker",
 		"deleteGuildSticker",
+	]) {
+		assert.equal(typeof (DiscordRestClient.prototype as unknown as Record<string, unknown>)[method], "function", method);
+	}
+});
+
+test("the package barrel re-exports the Stage Instance surface", () => {
+	// Privacy level is a runtime value enum — verify it survives the barrel.
+	assert.equal(StageInstancePrivacyLevel.Public, 1);
+	assert.equal(StageInstancePrivacyLevel.GuildOnly, 2);
+
+	const create: CreateStageInstanceOptions = {
+		channel_id: "733488538393510049",
+		topic: "Testing Testing, 123",
+	};
+	const modify: ModifyStageInstanceOptions = { privacy_level: 2 };
+	assert.equal(create.topic.length <= 120, true);
+	assert.equal(modify.privacy_level, StageInstancePrivacyLevel.GuildOnly);
+
+	const instance: APIStageInstance = {
+		id: "840647391636226060",
+		guild_id: "197038439483310086",
+		channel_id: "733488538393510049",
+		topic: "Testing Testing, 123",
+		privacy_level: StageInstancePrivacyLevel.GuildOnly,
+		discoverable_disabled: false,
+	};
+	const result: StageInstanceResult = instance;
+	assert.equal(result.id, "840647391636226060");
+
+	// The four stage instance routes exist on the client.
+	for (const method of [
+		"createStageInstance",
+		"fetchStageInstance",
+		"modifyStageInstance",
+		"deleteStageInstance",
 	]) {
 		assert.equal(typeof (DiscordRestClient.prototype as unknown as Record<string, unknown>)[method], "function", method);
 	}
