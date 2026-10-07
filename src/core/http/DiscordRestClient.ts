@@ -12,6 +12,7 @@ import type {
   APIMessage,
   APIRole,
   APISKU,
+  APIStageInstance,
   APISticker,
   APIStickerPack,
   APIUser,
@@ -63,6 +64,10 @@ import type {
   ModifyGuildStickerOptions,
   StickerPacksListResult,
 } from '../../stickers/Stickers.js';
+import type {
+  CreateStageInstanceOptions,
+  ModifyStageInstanceOptions,
+} from '../../stageInstances/StageInstances.js';
 import { toBlob, type DiscordMessageFile } from '../../core/messages/message-payloads.js';
 
 import type {
@@ -1849,6 +1854,76 @@ export class DiscordRestClient {
    */
   async deleteGuildSticker(guildId: string, stickerId: string, reason?: string): Promise<void> {
     await this.request('/guilds/' + guildId + '/stickers/' + stickerId, {
+      method: 'DELETE',
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /**
+   * Creates a Stage instance associated to a Stage channel, marking the channel
+   * *live*. Returns the Stage instance. Fires a `STAGE_INSTANCE_CREATE` Gateway
+   * event.
+   *
+   * Requires the user to be a moderator of the Stage channel. Supports the
+   * `X-Audit-Log-Reason` header via `reason`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/stage-instance#create-stage-instance}
+   */
+  async createStageInstance(
+    options: CreateStageInstanceOptions,
+    reason?: string,
+  ): Promise<APIStageInstance> {
+    return this.request<APIStageInstance>('/stage-instances', {
+      method: 'POST',
+      body: JSON.stringify(options),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /**
+   * Returns the Stage instance associated to a Stage channel, if one exists.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/stage-instance#get-stage-instance}
+   */
+  async fetchStageInstance(channelId: string): Promise<APIStageInstance> {
+    return this.request<APIStageInstance>(`/stage-instances/${channelId}`);
+  }
+
+  /**
+   * Modifies an existing Stage instance. All fields are optional; omit a field
+   * to leave it unchanged. Fires a `STAGE_INSTANCE_UPDATE` Gateway event.
+   *
+   * Requires the user to be a moderator of the Stage channel. Supports the
+   * `X-Audit-Log-Reason` header via `reason`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/stage-instance#modify-stage-instance}
+   */
+  async modifyStageInstance(
+    channelId: string,
+    options: ModifyStageInstanceOptions,
+    reason?: string,
+  ): Promise<APIStageInstance> {
+    return this.request<APIStageInstance>(`/stage-instances/${channelId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(options),
+      headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
+    });
+  }
+
+  /**
+   * Deletes a Stage instance, marking the channel not live. Returns
+   * `204 No Content`. Fires a `STAGE_INSTANCE_DELETE` Gateway event.
+   *
+   * A Stage instance also auto-closes after its channel has had no speakers for
+   * a few minutes.
+   *
+   * Requires the user to be a moderator of the Stage channel. Supports the
+   * `X-Audit-Log-Reason` header via `reason`.
+   *
+   * @see {@link https://docs.discord.com/developers/resources/stage-instance#delete-stage-instance}
+   */
+  async deleteStageInstance(channelId: string, reason?: string): Promise<void> {
+    await this.request(`/stage-instances/${channelId}`, {
       method: 'DELETE',
       headers: reason ? { 'X-Audit-Log-Reason': reason } : undefined,
     });

@@ -18,6 +18,7 @@ Mini Interaction is a high-performance framework designed for building Discord H
 - **🔊 Voice States & Regions**: Read voice membership, drive stage-channel speak state, and pin a channel's `rtc_region`.
 - **👥 Users**: Fetch and edit users, list the current user's guilds, open DMs, read connections, and manage application role connections.
 - **🎭 Stickers**: Read stickers, sticker packs and guild stickers, and create, modify, or delete guild stickers with audit reasons.
+- **🎙️ Stage Instances**: Go live on Stage channels — create, read, modify, and close Stage instances with audit reasons.
 - **📨 Webhook Events**: Typed, signature-verified HTTP events with an ack-correct endpoint.
 - **🗃️ Mini Database**: Lightweight, document-based storage integration.
 
@@ -494,6 +495,57 @@ Notes:
   as the trailing argument. Create needs `CREATE_GUILD_EXPRESSIONS`; modify
   and delete need `MANAGE_GUILD_EXPRESSIONS` (or `CREATE_GUILD_EXPRESSIONS`
   for stickers you uploaded yourself).
+
+---
+
+## 🎙️ Stage Instances
+
+A Stage Instance holds the state of a **live** Stage channel: while one exists,
+the channel is live; when it's gone, the channel is not. Create, read, modify,
+and close them with the full Stage Instance Resource.
+
+```ts
+import { DiscordRestClient, StageInstancePrivacyLevel } from '@minesa-org/mini-interaction';
+
+const rest = new DiscordRestClient({
+  token: process.env.DISCORD_TOKEN!,
+  applicationId: process.env.DISCORD_APPLICATION_ID!,
+});
+
+// Create — channel_id and topic (1–120 chars) are required.
+const instance = await rest.createStageInstance(
+  {
+    channel_id: '733488538393510049',
+    topic: 'Testing Testing, 123',
+    privacy_level: StageInstancePrivacyLevel.GuildOnly, // default
+    send_start_notification: true, // pings @everyone (needs MENTION_EVERYONE)
+  },
+  'weekly town hall', // optional X-Audit-Log-Reason
+);
+
+// Read it back by the Stage channel's id.
+const live = await rest.fetchStageInstance(instance.channel_id);
+
+// Modify — all fields optional.
+await rest.modifyStageInstance(live.channel_id, { topic: 'New topic' }, 'renamed');
+
+// Delete resolves 204 No Content. Stage instances also auto-close after a
+// few minutes with no speakers.
+await rest.deleteStageInstance(live.channel_id, 'wrap up');
+```
+
+Notes:
+
+- **Privacy level**: `StageInstancePrivacyLevel.Public = 1` (deprecated) and
+  `StageInstancePrivacyLevel.GuildOnly = 2` — the default. Guild-only means
+  only guild members see the instance.
+- **Moderators**: creating, modifying, and deleting require the user to be a
+  moderator of the Stage channel — all of `MANAGE_CHANNELS`, `MUTE_MEMBERS`,
+  and `MOVE_MEMBERS`.
+- **Audit reasons**: create, modify, and delete accept an
+  `X-Audit-Log-Reason` as the trailing argument.
+- **Scheduled events**: pass `guild_scheduled_event_id` when creating to tie
+  the instance to a guild scheduled event.
 
 ---
 

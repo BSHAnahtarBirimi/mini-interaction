@@ -203,6 +203,15 @@ export type {
 	StickerPacksListResult,
 } from "./stickers/Stickers.js";
 export {
+	StageInstancePrivacyLevel,
+} from "./stageInstances/StageInstances.js";
+export type {
+	APIStageInstance,
+	CreateStageInstanceOptions,
+	ModifyStageInstanceOptions,
+	StageInstanceResult,
+} from "./stageInstances/StageInstances.js";
+export {
 	DynamicFieldType,
 	APPLICATION_IDENTITY_LIMITS,
 	APPLICATION_IDENTITY_PROFILE_ERRORS,
