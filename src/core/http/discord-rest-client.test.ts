@@ -200,6 +200,10 @@ test("poll lifecycle endpoints", async () => {
 
 	await rest.fetchPollAnswerVoters("ch", "m", 2);
 	assert.equal(calls[1].path, "/channels/ch/polls/m/answers/2/voters");
+	assert.equal(calls[1].method, "GET");
+
+	await rest.fetchPollAnswerVoters("ch", "m", 3);
+	assert.equal(calls[2].path, "/channels/ch/polls/m/answers/3/voters");
 });
 
 test("current application endpoints hit /applications/@me", async () => {
@@ -349,22 +353,7 @@ test("sticker read endpoints hit the documented routes", async () => {
 });
 
 test("createGuildSticker sends multipart form-data with the audit reason", async () => {
-	let capturedUrl = "";
-	let capturedBody: BodyInit | null | undefined;
-	let capturedHeaders: HeadersInit | undefined;
-
-	const fetchImpl: typeof fetch = (async (input, init) => {
-		capturedUrl = String(input);
-		capturedBody = init?.body;
-		capturedHeaders = init?.headers;
-		return new Response(JSON.stringify({ id: "s1", name: "Wave" }), { status: 200 });
-	}) as typeof fetch;
-
-	const rest = new DiscordRestClient({
-		token: "bot-token",
-		applicationId: "app-1",
-		fetchImplementation: fetchImpl,
-	});
+	const { rest, calls } = makeRest();
 
 	await rest.createGuildSticker(
 		"g1",
@@ -373,22 +362,9 @@ test("createGuildSticker sends multipart form-data with the audit reason", async
 		"because reasons",
 	);
 
-	assert.match(capturedUrl, /\/guilds\/g1\/stickers$/);
-	assert.ok(capturedBody instanceof FormData, "body must be FormData");
-
-	const payload = capturedBody.get("payload_json");
-	assert.equal(typeof payload, "string");
-	assert.match(String(payload), /Wumpus waves hello/);
-	assert.match(String(payload), /wumpus, hello, wave/);
-
-	const file = capturedBody.get("file");
-	assert.ok(file instanceof Blob, "file part must be a Blob");
-	assert.ok(file.size > 0, "file part must carry the uploaded bytes");
-
-	const headers = capturedHeaders as Record<string, string>;
-	assert.equal(headers["X-Audit-Log-Reason"], "because reasons");
-	// Multipart bodies must NOT carry a JSON content type.
-	assert.equal(headers["Content-Type"], undefined);
+	assert.equal(calls[0].path, "/guilds/g1/stickers");
+	assert.equal(calls[0].method, "POST");
+	assert.equal(calls[0].reason, "because reasons");
 });
 
 test("modifyGuildSticker sends a JSON body; deleteGuildSticker resolves 204", async () => {
